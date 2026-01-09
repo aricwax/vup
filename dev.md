@@ -6,6 +6,8 @@
 
 `vup` is a Python virtual environment management tool that provides intuitive venv discovery and activation based on directory context. It searches for `.venv/` directories starting from the current working directory and traversing up the filesystem tree to `~`, allowing users to activate venvs from anywhere within a project hierarchy.
 
+**Scope:** `vup` only manages venvs within the user's home directory (`~`). Operations outside of `~` will result in an error.
+
 ### Architecture
 
 The tool uses a hybrid bash/Python architecture:
@@ -15,13 +17,14 @@ The tool uses a hybrid bash/Python architecture:
   - Setting/restoring the `PS1` prompt
   - Deactivation
   - Routing subcommands to the Python core
+  - Interactive confirmation prompts
 
 - **Python script (`vup-core`)** - Handles all complex logic:
   - Directory traversal and `.venv/` discovery
   - venv validation (checking for `bin/activate`)
   - Listing all discoverable venvs
   - Creating new venvs
-  - Removing venvs (with confirmation)
+  - Prompt identifier generation
 
 ### Directory Structure Convention
 
@@ -52,9 +55,10 @@ When activating a venv (e.g., `vup main`), the tool searches for `.venv/main/` i
 2. Parent directory
 3. Continue up the tree...
 4. `~` (home directory)
-5. If outside of `~`, fallback to `~/.venv/` as final check
 
 The first valid match wins (closest to current directory takes precedence).
+
+If the current directory is outside of `~`, an error is displayed.
 
 ### Prompt Customization
 
@@ -72,13 +76,15 @@ The prompt format is: `(<branch_dir>/<venv_name>) BASE_PS1$ `
 
 ## Requirements
 
+### R0: Scope
+
+**R0.1** - `vup` only operates within the user's home directory (`~`). If the current working directory is outside of `~`, all commands except `help` will print an error message: "vup only manages venvs within your home directory."
+
 ### R1: Activation (`vup <name>`)
 
 **R1.1** - When `vup <name>` is called, search for a valid venv at `.venv/<name>/` starting from the current directory, and if not found, progressively traverse up to `~`, searching at each directory level.
 
-**R1.2** - If current directory is outside of `~`, search up to the filesystem root, then check `~/.venv/` as a final fallback.
-
-**R1.3** - At each directory level, perform validation in this order:
+**R1.2** - At each directory level, perform validation in this order:
 1. Check if `.venv` exists
    - If `.venv` does not exist, continue to next directory level (no warning)
    - If `.venv` exists but is not a directory, print warning and continue to next directory level
@@ -89,15 +95,15 @@ The prompt format is: `(<branch_dir>/<venv_name>) BASE_PS1$ `
    - If it does not exist, print warning and continue to next directory level
    - If it exists, this is a valid venv - proceed with activation
 
-**R1.4** - If no valid venv is found after exhausting the search path (including `~/.venv/` fallback if applicable), print an error message.
+**R1.3** - If no valid venv is found after exhausting the search path, print an error message.
 
-**R1.5** - On successful activation, print a message showing which venv was activated and its location (e.g., "Activated main from ~/proj/foo/.venv/").
+**R1.4** - On successful activation, print a message showing which venv was activated and its location (e.g., "Activated main from ~/proj/foo/.venv/").
 
-**R1.6** - On successful activation, update `PS1` to show the venv identifier as specified in the "Prompt Customization" section above.
+**R1.5** - On successful activation, update `PS1` to show the venv identifier as specified in the "Prompt Customization" section above.
 
-**R1.7** - Disable the default venv prompt modification (`VIRTUAL_ENV_DISABLE_PROMPT=1`) to use custom prompt handling.
+**R1.6** - Disable the default venv prompt modification (`VIRTUAL_ENV_DISABLE_PROMPT=1`) to use custom prompt handling.
 
-**R1.8** - If a venv is already active when activating a new one, implicitly deactivate the current venv first (restore `PS1`), then activate the new venv.
+**R1.7** - If a venv is already active when activating a new one, implicitly deactivate the current venv first (restore `PS1`), then activate the new venv.
 
 ### R2: Directory Override (`vup -d <dir> <name>`)
 
@@ -106,18 +112,18 @@ The prompt format is: `(<branch_dir>/<venv_name>) BASE_PS1$ `
 **R2.2** - The `<dir>` path follows standard Linux path conventions:
 - Relative paths are relative to the current working directory
 - Absolute paths and paths starting with `~` are interpreted as-is
+- The resolved path must be within `~`, otherwise print an error
 - Example: `vup -d ~/proj/foo main` activates `~/proj/foo/.venv/main`
-- Example: From `/tmp`, running `vup -d dev/bar main` looks for `/tmp/dev/bar/.venv/main`
+- Example: `vup -d ../bar main` activates `..bar/.venv/main` (relative to cwd)
 
-**R2.3** - The search DOES NOT traverse up from the specified directory. If the venv `<name>` does not exist or is not valid in `<dir>/.venv/`, print an error message (same validation and error behavior as R1.3/R1.4, but without upward traversal).
+**R2.3** - The search DOES NOT traverse up from the specified directory. If the venv `<name>` does not exist or is not valid in `<dir>/.venv/`, print an error message (same validation and error behavior as R1.2/R1.3, but without upward traversal).
 
-### R3: Listing (`vup ls <dir>`)
+### R3: Listing (`vup ls [dir]`)
 
 **R3.1** - List all discoverable venvs from the starting directory up to `~`.
-- If `<dir>` is provided, start from that directory (following same path conventions as R2.2)
-- If `<dir>` is omitted, start from the current directory
-- If `vup ls` is run while the current directory is outside `~`, fallback to listing venvs in `~/.venv/`
-- If `<dir>` is provided and outside `~` throw an error.
+- If `[dir]` is provided, start from that directory (following same path conventions as R2.2)
+- If `[dir]` is omitted, start from the current directory
+- If the starting directory (cwd or provided `[dir]`) is outside `~`, print an error
 
 **R3.2** - For each venv, display:
 - A `*` character in the first column to indicate the currently active venv (space otherwise)
@@ -154,7 +160,7 @@ The prompt format is: `(<branch_dir>/<venv_name>) BASE_PS1$ `
 
 **R5.5** - Print success message with the full path of the created venv.
 
-**R5.6** - After successful creation, automatically activate the new venv (following the activation behavior in R1.5 and R1.6).
+**R5.6** - After successful creation, automatically activate the new venv (following the activation behavior in R1.4 and R1.5).
 
 ### R6: Removing (`vup rm <name>`)
 
@@ -187,7 +193,7 @@ The prompt format is: `(<branch_dir>/<venv_name>) BASE_PS1$ `
 - The path exists and is a directory
 - The path contains `bin/activate`
 
-**R8.3** - The validation function returns a status indicating: valid, not found, `./venv` not a directory, `./venv/<name>` not found, or missing `bin/activate` script.
+**R8.3** - The validation function returns a status indicating: valid, not found, `.venv` not a directory, `.venv/<name>` not found, or missing `bin/activate` script.
 
 ### R9: Help (`vup help` or `vup -h` or `vup --help`)
 
@@ -197,26 +203,136 @@ The prompt format is: `(<branch_dir>/<venv_name>) BASE_PS1$ `
 
 ## Planning
 
+### Architecture Details
+
+#### Responsibility Split
+
+The hybrid architecture exists because **bash must handle anything that modifies the shell environment** - this cannot be done from a subprocess.
+
+| `vup-core` (Python) | `vup` (Bash function) |
+|---------------------|----------------------|
+| Path traversal & search | Source activate scripts |
+| Validation logic | Set/restore PS1 |
+| Listing & formatting | Deactivation |
+| Creating venvs | Interactive confirmation (rm) |
+| Prompt string generation | Subcommand routing |
+
+#### `vup-core` Subcommands
+
+Each subcommand communicates with bash via stdout, stderr, and exit codes:
+
+**`find <name> [--start-dir <dir>] [--no-traverse]`**
+- Searches for a venv by name
+- stdout: Full path to venv (e.g., `/home/user/proj/foo/.venv/main`)
+- stderr: Error/warning messages
+- Exit 0 on success, non-zero on failure
+- `--no-traverse` disables upward directory traversal (for `-d` flag behavior)
+
+**`ls [--start-dir <dir>]`**
+- Lists all discoverable venvs
+- stdout: Formatted, aligned table ready to print (Python handles alignment)
+- stderr: Error messages
+- Exit 0 on success, non-zero on failure
+
+**`validate <path>`**
+- Checks if a path is a valid venv
+- stdout: (empty)
+- stderr: Human-readable error message if invalid
+- Exit codes: 0=valid, 1=not found, 2=not a directory, 3=no bin/activate
+
+**`init`**
+- Creates `.venv/` in current directory
+- stdout: (empty on success)
+- stderr: Error message if `.venv` already exists
+- Exit 0 on success, non-zero on failure
+
+**`new <name>`**
+- Creates a new venv
+- stdout: Full path to created venv
+- stderr: Error messages
+- Exit 0 on success, non-zero on failure
+
+**`prompt <venv-path>`**
+- Generates prompt identifier from venv path
+- stdout: Prompt string (e.g., `foo/main` or `~/main`)
+- Exit 0 always
+
+#### Bash Function Structure
+
+```bash
+vup() {
+    # Check if within home directory (R0.1)
+    case "$PWD" in
+        "$HOME"*) ;;
+        *) echo "vup only manages venvs within your home directory." >&2; return 1 ;;
+    esac
+
+    case "$1" in
+        ls)
+            vup-core ls "${@:2}"
+            ;;
+        init)
+            vup-core init
+            ;;
+        new)
+            local path
+            path=$(vup-core new "$2") || return 1
+            _vup_activate "$path"
+            ;;
+        rm)
+            vup-core validate ".venv/$2" || return 1
+            read -p "Type '$2' to confirm removal: " confirm
+            if [[ "$confirm" == "$2" ]]; then
+                [[ "$VIRTUAL_ENV" == "$PWD/.venv/$2" ]] && _vup_deactivate
+                rm -rf ".venv/$2"
+                echo "Removed $2"
+            else
+                echo "Removal cancelled"
+            fi
+            ;;
+        off)
+            [[ -n "$VIRTUAL_ENV" ]] && _vup_deactivate || echo "No venv active"
+            ;;
+        help|-h|--help)
+            vup-core help
+            ;;
+        -d)
+            local path
+            path=$(vup-core find "$3" --start-dir "$2" --no-traverse) || return 1
+            _vup_activate "$path"
+            ;;
+        *)
+            local path
+            path=$(vup-core find "$1") || return 1
+            _vup_activate "$path"
+            ;;
+    esac
+}
+
+_vup_activate() {
+    [[ -n "$VIRTUAL_ENV" ]] && deactivate
+    source "$1/bin/activate"
+    PS1="($(vup-core prompt "$1")) $BASE_PS1\$ "
+    echo "Activated $(basename "$1") from $(dirname "$1")/"
+}
+
+_vup_deactivate() {
+    deactivate
+    PS1="$BASE_PS1\$ "
+}
+```
+
 ### Phase 1: Core Infrastructure
 
 #### Task 1.1: Create `vup-core` Python script
 - Location: `~/.local/bin/vup-core`
-- Implement subcommands:
-  - `find <name> [--start-dir <dir>] [--no-traverse]` - Search for venv, output path or error
-  - `ls [--start-dir <dir>]` - List all discoverable venvs as structured output
-  - `validate <path>` - Check if path is a valid venv, return status
-  - `init [--dir <dir>]` - Create `.venv/` directory
-  - `new <name> [--dir <dir>]` - Create a new venv
-  - `prompt <venv-path>` - Output the prompt identifier for a venv path
+- Single executable Python file with argparse for subcommand handling
+- Implement subcommands: `find`, `ls`, `validate`, `init`, `new`, `prompt`
 
 #### Task 1.2: Create `vup` bash function
 - Location: `~/.bash_funcs` (sourced by `~/.bashrc`)
-- Implement:
-  - Subcommand routing
-  - Activation (source activate, set PS1)
-  - Deactivation (restore PS1)
-  - Interactive confirmation for `rm`
-  - Call `vup-core` for complex operations
+- Implement subcommand routing and shell-level operations
+- Helper functions: `_vup_activate`, `_vup_deactivate`
 
 #### Task 1.3: Update `~/.bashrc`
 - Define `BASE_PS1` without trailing `$`
@@ -227,8 +343,7 @@ The prompt format is: `(<branch_dir>/<venv_name>) BASE_PS1$ `
 
 #### Task 2.1: Implement search algorithm in Python
 - Start from current (or specified) directory
-- Walk up to `~` (or root if outside `~`)
-- Fallback to `~/.venv/` if outside `~`
+- Walk up to `~`
 - Validate each candidate using `validate_venv()`
 - Return first valid match or error
 - Support `--no-traverse` flag for `-d` behavior
@@ -254,10 +369,9 @@ The prompt format is: `(<branch_dir>/<venv_name>) BASE_PS1$ `
 - Check for existing `.venv/<name>`
 - Create venv with `python3 -m venv`
 
-#### Task 2.6: Implement `rm`
-- Validate venv exists in current `.venv/`
-- Return status for bash to handle confirmation prompt
-- Delete venv directory on confirmation
+#### Task 2.6: Implement `rm` support
+- `validate` subcommand returns status for bash to handle confirmation
+- Bash handles interactive prompt and deletion
 
 ### Phase 3: Installation & Polish
 
@@ -268,8 +382,8 @@ The prompt format is: `(<branch_dir>/<venv_name>) BASE_PS1$ `
 - Update `~/.bashrc` if needed
 
 #### Task 3.2: Testing
-- Test activation from various directories
-- Test edge cases (outside ~, missing .venv, invalid venvs)
+- Test activation from various directories within `~`
+- Test error handling when outside `~`
 - Test prompt formatting
 - Test switching between venvs
 - Test init/new/rm commands
@@ -285,4 +399,5 @@ The prompt format is: `(<branch_dir>/<venv_name>) BASE_PS1$ `
 
 1. ~~Should `vup-core` be a single Python file or a small package?~~ **Decided:** Single file to start, can refactor later if needed.
 2. ~~Where should `vup-core` be installed?~~ **Decided:** `~/.local/bin/vup-core`
-3. Color scheme for prompt venv indicator? (Deferred for now)
+3. ~~Should vup work outside of `~`?~~ **Decided:** No, constrained to home directory for v1.
+4. Color scheme for prompt venv indicator? (Deferred for now)
