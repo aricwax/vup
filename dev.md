@@ -1,22 +1,22 @@
-# pyve - Python Virtual Environment Manager
+# vup - Python Virtual Environment Manager
 
 ## Design
 
 ### Overview
 
-`pyve` is a Python virtual environment management tool that provides intuitive venv discovery and activation based on directory context. It searches for `.venv/` directories starting from the current working directory and traversing up the filesystem tree to `~`, allowing users to activate venvs from anywhere within a project hierarchy.
+`vup` is a Python virtual environment management tool that provides intuitive venv discovery and activation based on directory context. It searches for `.venv/` directories starting from the current working directory and traversing up the filesystem tree to `~`, allowing users to activate venvs from anywhere within a project hierarchy.
 
 ### Architecture
 
 The tool uses a hybrid bash/Python architecture:
 
-- **Bash function (`pyve`)** - The user-facing entry point, sourced into the shell via a user's `~/.bashrc` or `~/.bash_funcs` file. Handles shell-level operations that cannot be done from a subprocess:
+- **Bash function (`vup`)** - The user-facing entry point, sourced into the shell via a user's `~/.bashrc` or `~/.bash_funcs` file. Handles shell-level operations that cannot be done from a subprocess:
   - Sourcing the venv `activate` script
   - Setting/restoring the `PS1` prompt
   - Deactivation
   - Routing subcommands to the Python core
 
-- **Python script (`pyve-core`)** - Handles all complex logic:
+- **Python script (`vup-core`)** - Handles all complex logic:
   - Directory traversal and `.venv/` discovery
   - venv validation (checking for `bin/activate`)
   - Listing all discoverable venvs
@@ -47,7 +47,7 @@ This convention:
 
 ### Search Behavior
 
-When activating a venv (e.g., `pyve main`), the tool searches for `.venv/main/` in:
+When activating a venv (e.g., `vup main`), the tool searches for `.venv/main/` in:
 1. Current directory
 2. Parent directory
 3. Continue up the tree...
@@ -69,9 +69,9 @@ The prompt format is: `(venv_identifier) BASE_PS1$ `
 
 ## Requirements
 
-### R1: Activation (`pyve <name>`)
+### R1: Activation (`vup <name>`)
 
-**R1.1** - When `pyve <name>` is called, search for `.venv/<name>/` starting from the current directory, and if not found, progressively traversing up to `~`, searching at each directory level.
+**R1.1** - When `vup <name>` is called, search for `.venv/<name>/` starting from the current directory, and if not found, progressively traversing up to `~`, searching at each directory level.
 
 **R1.2** - If current directory is outside of `~`, check `~/.venv/` as a final fallback.
 
@@ -89,15 +89,15 @@ The prompt format is: `(venv_identifier) BASE_PS1$ `
 
 **R1.7** - Disable the default venv prompt modification (`VIRTUAL_ENV_DISABLE_PROMPT=1`) to use custom prompt handling.
 
-### R2: Directory Override (`pyve -d <dir> <name>`)
+### R2: Directory Override (`vup -d <dir> <name>`)
 
 **R2.1** - The `-d` flag specifies a directory for the search instead of the current directory.
 
-**R2.2** - `pyve -d dev/bar main` should activate `~/dev/bar/.venv/main` regardless of current directory.
+**R2.2** - `vup -d dev/bar main` should activate `~/dev/bar/.venv/main` regardless of current directory.
 
 **R2.3** - The search DOES NOT traverse up from the specified directory if not found there. If the venv `<name>` does not exist in `<dir>/.venv`, then throw an error message.
 
-### R3: Listing (`pyve ls`)
+### R3: Listing (`vup ls`)
 
 **R3.1** - List all discoverable venvs from the current directory up to `~`.
 
@@ -108,7 +108,7 @@ The prompt format is: `(venv_identifier) BASE_PS1$ `
   - Two spaces to delineate columns
   - A `*` character to indicate which venv (if any) is currently active.
 
-Example output to `pyve ls` from current directory `~/proj/foo/webscrape`:
+Example output to `vup ls` from current directory `~/proj/foo/webscrape`:
 ```
   web       ~/proj/foo/webscrape
 * main      ~/proj/foo
@@ -117,26 +117,26 @@ Example output to `pyve ls` from current directory `~/proj/foo/webscrape`:
   longname  ~
 ```
 
-### R4: Initializing (`pyve init`)
+### R4: Initializing (`vup init`)
 
 **R4.1** - If `.venv` exists in the current directory, throw an error
 
 **R4.2** If `.venv` does not exist in the current directory, create it and exit silently
 
-### R5: Creating (`pyve new <name>`)
+### R5: Creating (`vup new <name>`)
 
 **R5.1** - Create a new venv in the current directory's `.venv/` folder.
 
-**R5.2** - If `.venv/` does not exist in the current directory, print an error and suggest using the `pyve init` command.
+**R5.2** - If `.venv/` does not exist in the current directory, print an error and suggest using the `vup init` command.
 
 **R5.3** - Use `python3 -m venv` with `--prompt <name>` to set the venv's internal prompt name.
 
 **R5.4** - Print success message with the full path of the created venv.
 
-### R6: Removing (`pyve rm <name>`)
+### R6: Removing (`vup rm <name>`)
 
 **R6.1** Follow this sequence:
-- Check for venv validity only from current directory (no upward tree traversal) using `pyve-validate`
+- Check for venv validity only from current directory (no upward tree traversal) using `vup-validate`
 - If not valid, exit and print error about venv validity
 - If does not exist (`.venv/` or `.venv/<name>` does not exist) in current branch directory, exit and print error about non existence of venv and remind user that venvs must be deleted from their branch directory
 - If is valid, prompt user to type the name of the venv to confirm deletion
@@ -145,7 +145,7 @@ Example output to `pyve ls` from current directory `~/proj/foo/webscrape`:
 
 **R6.2** - If the venv being removed is currently active, deactivate it first.
 
-### R7: Deactivation (`pyve off`)
+### R7: Deactivation (`vup off`)
 
 **R7.1** - Deactivate the current venv if one is active.
 
@@ -161,9 +161,9 @@ Example output to `pyve ls` from current directory `~/proj/foo/webscrape`:
 
 **R8.3** - Invalid venvs are skipped with a warning during search.
 
-**R8.4** - Validation should be handled by a separate function or module `pyve-validate`
+**R8.4** - Validation should be handled by a separate function or module `vup-validate`
 
-### R9: Help (`pyve help` or `pyve -h` or `pyve --help`)
+### R9: Help (`vup help` or `vup -h` or `vup --help`)
 
 **R9.1** - Display usage information and available subcommands.
 
@@ -173,8 +173,8 @@ Example output to `pyve ls` from current directory `~/proj/foo/webscrape`:
 
 ### Phase 1: Core Infrastructure
 
-#### Task 1.1: Create `pyve-core` Python script
-- Location: `~/.local/bin/pyve-core` (or installed via this repo)
+#### Task 1.1: Create `vup-core` Python script
+- Location: `~/.local/bin/vup-core` (or installed via this repo)
 - Implement subcommands:
   - `find <name> [--start-dir <dir>]` - Search for venv, output path or error
   - `ls [--start-dir <dir>]` - List all discoverable venvs as structured output
@@ -182,13 +182,13 @@ Example output to `pyve ls` from current directory `~/proj/foo/webscrape`:
   - `new <name> [--force] [--dir <dir>]` - Create a new venv
   - `rm <name> [--dir <dir>]` - Remove a venv (confirmation handled in bash or via flag)
 
-#### Task 1.2: Create `pyve` bash function
+#### Task 1.2: Create `vup` bash function
 - Location: `~/.bash_funcs` (sourced by `~/.bashrc`)
 - Implement:
   - Subcommand routing
   - Activation (source activate, set PS1)
   - Deactivation (restore PS1)
-  - Call `pyve-core` for complex operations
+  - Call `vup-core` for complex operations
 
 #### Task 1.3: Update `~/.bashrc`
 - Define `BASE_PS1` without trailing `$`
@@ -227,8 +227,8 @@ Example output to `pyve ls` from current directory `~/proj/foo/webscrape`:
 ### Phase 3: Installation & Polish
 
 #### Task 3.1: Create installation script
-- Copy `pyve-core` to appropriate location
-- Add `pyve` function to `~/.bash_funcs`
+- Copy `vup-core` to appropriate location
+- Add `vup` function to `~/.bash_funcs`
 - Update `~/.bashrc` if needed
 
 #### Task 3.2: Testing
@@ -245,6 +245,6 @@ Example output to `pyve ls` from current directory `~/proj/foo/webscrape`:
 
 ## Open Questions
 
-1. Should `pyve-core` be a single Python file or a small package?
-2. Where should `pyve-core` be installed? (`~/.local/bin/`, as part of this repo, etc.)
+1. Should `vup-core` be a single Python file or a small package?
+2. Where should `vup-core` be installed? (`~/.local/bin/`, as part of this repo, etc.)
 3. Color scheme for prompt venv indicator?
