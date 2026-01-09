@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+"""vup-core - Python backend for vup virtual environment manager."""
+
+import argparse
+import sys
+import os
+
+
+def cmd_find(args):
+    """Find a venv by name, searching upward from start directory."""
+    # TODO: Implement search algorithm
+    print(f"[stub] find: name={args.name}, start_dir={args.start_dir}, no_traverse={args.no_traverse}", file=sys.stderr)
+    return 1
+
+
+def cmd_ls(args):
+    """List all discoverable venvs."""
+    # TODO: Implement listing
+    print(f"[stub] ls: start_dir={args.start_dir}", file=sys.stderr)
+    return 1
+
+
+def cmd_validate(args):
+    """Validate a venv path."""
+    # TODO: Implement validation
+    # Exit codes: 0=valid, 1=not found, 2=not a directory, 3=no bin/activate
+    print(f"[stub] validate: path={args.path}", file=sys.stderr)
+    return 1
+
+
+def cmd_init(args):
+    """Initialize .venv/ directory."""
+    # TODO: Implement init
+    print("[stub] init", file=sys.stderr)
+    return 1
+
+
+def cmd_new(args):
+    """Create a new venv."""
+    # TODO: Implement new
+    print(f"[stub] new: name={args.name}", file=sys.stderr)
+    return 1
+
+
+def cmd_prompt(args):
+    """Generate prompt identifier from venv path."""
+    # TODO: Implement prompt generation
+    print(f"[stub] prompt: venv_path={args.venv_path}", file=sys.stderr)
+    return 0
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog='vup-core',
+        description='Python backend for vup virtual environment manager'
+    )
+    subparsers = parser.add_subparsers(dest='command', required=True)
+
+    # find <name> [--start-dir <dir>] [--no-traverse]
+    p_find = subparsers.add_parser('find', help='Find a venv by name')
+    p_find.add_argument('name', help='Name of the venv to find')
+    p_find.add_argument('--start-dir', default=None, help='Directory to start search from')
+    p_find.add_argument('--no-traverse', action='store_true', help='Disable upward directory traversal')
+    p_find.set_defaults(func=cmd_find)
+
+    # ls [--start-dir <dir>]
+    p_ls = subparsers.add_parser('ls', help='List all discoverable venvs')
+    p_ls.add_argument('--start-dir', default=None, help='Directory to start listing from')
+    p_ls.set_defaults(func=cmd_ls)
+
+    # validate <path>
+    p_validate = subparsers.add_parser('validate', help='Validate a venv path')
+    p_validate.add_argument('path', help='Path to validate')
+    p_validate.set_defaults(func=cmd_validate)
+
+    # init
+    p_init = subparsers.add_parser('init', help='Initialize .venv/ directory')
+    p_init.set_defaults(func=cmd_init)
+
+    # new <name>
+    p_new = subparsers.add_parser('new', help='Create a new venv')
+    p_new.add_argument('name', help='Name of the venv to create')
+    p_new.set_defaults(func=cmd_new)
+
+    # prompt <venv-path>
+    p_prompt = subparsers.add_parser('prompt', help='Generate prompt identifier')
+    p_prompt.add_argument('venv_path', help='Full path to the venv')
+    p_prompt.set_defaults(func=cmd_prompt)
+
+    args = parser.parse_args()
+    return args.func(args)
+
+
+if __name__ == '__main__':
+    sys.exit(main())
