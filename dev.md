@@ -133,10 +133,12 @@ Example output to `vup ls` from current directory `~/proj/foo/webscrape`:
 
 **R5.4** - Print success message with the full path of the created venv.
 
+**R5.5** - After successful creation, automatically activate the new venv (following the activation behavior in R1.5 and R1.6).
+
 ### R6: Removing (`vup rm <name>`)
 
 **R6.1** Follow this sequence:
-- Check for venv validity only from current directory (no upward tree traversal) using `vup-validate`
+- Check for venv validity only from current directory (no upward tree traversal) using the validation function
 - If not valid, exit and print error about venv validity
 - If does not exist (`.venv/` or `.venv/<name>` does not exist) in current branch directory, exit and print error about non existence of venv and remind user that venvs must be deleted from their branch directory
 - If is valid, prompt user to type the name of the venv to confirm deletion
@@ -161,7 +163,7 @@ Example output to `vup ls` from current directory `~/proj/foo/webscrape`:
 
 **R8.3** - Invalid venvs are skipped with a warning during search.
 
-**R8.4** - Validation should be handled by a separate function or module `vup-validate`
+**R8.4** - Validation should be handled by a reusable function `validate_venv()` within `vup-core`
 
 ### R9: Help (`vup help` or `vup -h` or `vup --help`)
 
@@ -245,6 +247,6 @@ Example output to `vup ls` from current directory `~/proj/foo/webscrape`:
 
 ## Open Questions
 
-1. Should `vup-core` be a single Python file or a small package?
-2. Where should `vup-core` be installed? (`~/.local/bin/`, as part of this repo, etc.)
-3. Color scheme for prompt venv indicator?
+1. ~~Should `vup-core` be a single Python file or a small package?~~ **Decided:** Single file to start, can refactor later if needed.
+2. ~~Where should `vup-core` be installed?~~ **Decided:** `~/.local/bin/vup-core`
+3. Color scheme for prompt venv indicator? (Deferred for now)
