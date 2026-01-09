@@ -58,7 +58,7 @@ The first valid match wins (closest to current directory takes precedence).
 
 ### Prompt Customization
 
-When a venv is activated, the prompt is updated to show the venv identifier in the format `(<branch_dir>/<venv_name>)`:
+When a venv is activated, the prompt is updated to show the venv identifier in the format `(<branch_dir>/<venv_name>)`. Examples:
 - For `~/.venv/main` → `(~/main)`
 - For `~/proj/foo/.venv/main` → `(foo/main)`
 
@@ -111,12 +111,13 @@ The prompt format is: `(<branch_dir>/<venv_name>) BASE_PS1$ `
 
 **R2.3** - The search DOES NOT traverse up from the specified directory. If the venv `<name>` does not exist or is not valid in `<dir>/.venv/`, print an error message (same validation and error behavior as R1.3/R1.4, but without upward traversal).
 
-### R3: Listing (`vup ls [dir]`)
+### R3: Listing (`vup ls <dir>`)
 
 **R3.1** - List all discoverable venvs from the starting directory up to `~`.
-- If `[dir]` is provided, start from that directory (following same path conventions as R2.2)
-- If `[dir]` is omitted, start from the current directory
-- If starting directory is outside `~`, fallback to listing venvs in `~/.venv/`
+- If `<dir>` is provided, start from that directory (following same path conventions as R2.2)
+- If `<dir>` is omitted, start from the current directory
+- If `vup ls` is run while the current directory is outside `~`, fallback to listing venvs in `~/.venv/`
+- If `<dir>` is provided and outside `~` throw an error.
 
 **R3.2** - For each venv, display:
 - A `*` character in the first column to indicate the currently active venv (space otherwise)
@@ -162,9 +163,9 @@ The prompt format is: `(<branch_dir>/<venv_name>) BASE_PS1$ `
 - If `.venv/<name>` does not exist, print error: venv not found in current directory's `.venv/`
 - If `.venv/<name>` exists but is not a valid venv (no `bin/activate`), print error about invalid venv
 
-**R6.2** - If venv is valid, prompt user to type the name of the venv to confirm deletion:
-- An exact case-sensitive match to `<name>` proceeds with deletion
-- Any other input cancels the deletion and prints a cancellation message
+**R6.2** - If venv is valid, prompt user to type the name of the venv to confirm removal:
+- An exact case-sensitive match to `<name>` proceeds with removal
+- Any other input cancels the removal and prints a cancellation message
 
 **R6.3** - If the venv being removed is currently active, deactivate it after confirmation but before deletion.
 
@@ -186,7 +187,7 @@ The prompt format is: `(<branch_dir>/<venv_name>) BASE_PS1$ `
 - The path exists and is a directory
 - The path contains `bin/activate`
 
-**R8.3** - The validation function returns a status indicating: valid, not found, not a directory, or missing activate script.
+**R8.3** - The validation function returns a status indicating: valid, not found, `./venv` not a directory, `./venv/<name>` not found, or missing `bin/activate` script.
 
 ### R9: Help (`vup help` or `vup -h` or `vup --help`)
 
