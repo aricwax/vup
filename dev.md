@@ -114,16 +114,16 @@ The prompt format is: `(<branch_dir>/<venv_name>) BASE_PS1$ `
 - Absolute paths and paths starting with `~` are interpreted as-is
 - The resolved path must be within `~`, otherwise print an error
 - Example: `vup -d ~/proj/foo main` activates `~/proj/foo/.venv/main`
-- Example: `vup -d ../bar main` activates `..bar/.venv/main` (relative to cwd)
+- Example: `vup -d ../bar main` activates `./../bar/.venv/main` (relative to cwd)
 
 **R2.3** - The search DOES NOT traverse up from the specified directory. If the venv `<name>` does not exist or is not valid in `<dir>/.venv/`, print an error message (same validation and error behavior as R1.2/R1.3, but without upward traversal).
 
-### R3: Listing (`vup ls [dir]`)
+### R3: Listing (`vup ls <dir>`)
 
 **R3.1** - List all discoverable venvs from the starting directory up to `~`.
-- If `[dir]` is provided, start from that directory (following same path conventions as R2.2)
-- If `[dir]` is omitted, start from the current directory
-- If the starting directory (cwd or provided `[dir]`) is outside `~`, print an error
+- If `<dir>` is provided, start from that directory (following same path conventions as R2.2)
+- If `<dir>` is omitted, start from the current directory
+- If the starting directory (cwd or provided `<dir>`) is outside `~`, print an error
 
 **R3.2** - For each venv, display:
 - A `*` character in the first column to indicate the currently active venv (space otherwise)
@@ -238,7 +238,7 @@ Each subcommand communicates with bash via stdout, stderr, and exit codes:
 - Checks if a path is a valid venv
 - stdout: (empty)
 - stderr: Human-readable error message if invalid
-- Exit codes: 0=valid, 1=not found, 2=not a directory, 3=no bin/activate
+- Exit codes: 0=valid, 1=not found, 2=not a directory, 3=no `bin/activate`
 
 **`init`**
 - Creates `.venv/` in current directory
