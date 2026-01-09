@@ -4,13 +4,13 @@
 
 ### Overview
 
-`pyve` is a virtual environment management tool that provides intuitive venv discovery and activation based on directory context. It searches for `.venv/` directories starting from the current working directory and traversing up the filesystem tree to `~`, allowing users to activate venvs from anywhere within a project hierarchy.
+`pyve` is a Python virtual environment management tool that provides intuitive venv discovery and activation based on directory context. It searches for `.venv/` directories starting from the current working directory and traversing up the filesystem tree to `~`, allowing users to activate venvs from anywhere within a project hierarchy.
 
 ### Architecture
 
 The tool uses a hybrid bash/Python architecture:
 
-- **Bash function (`pyve`)** - The user-facing entry point, sourced into the shell via `~/.bash_funcs`. Handles shell-level operations that cannot be done from a subprocess:
+- **Bash function (`pyve`)** - The user-facing entry point, sourced into the shell via a user's `~/.bashrc` or `~/.bash_funcs` file. Handles shell-level operations that cannot be done from a subprocess:
   - Sourcing the venv `activate` script
   - Setting/restoring the `PS1` prompt
   - Deactivation
@@ -18,7 +18,7 @@ The tool uses a hybrid bash/Python architecture:
 
 - **Python script (`pyve-core`)** - Handles all complex logic:
   - Directory traversal and `.venv/` discovery
-  - Venv validation (checking for `bin/activate`)
+  - venv validation (checking for `bin/activate`)
   - Listing all discoverable venvs
   - Creating new venvs
   - Removing venvs (with confirmation)
@@ -59,8 +59,9 @@ The first valid match wins (closest to current directory takes precedence).
 ### Prompt Customization
 
 When a venv is activated, the prompt is updated to show:
-- For `~/.venv/main` → `(main)`
+- For `~/.venv/main` → `(~/main)`
 - For `~/proj/foo/.venv/main` → `(foo/main)`
+- The general format for `venv_identifier` is `(<branch_dir>/<venv_name>)`
 
 The prompt format is: `(venv_identifier) BASE_PS1$ `
 
@@ -70,88 +71,101 @@ The prompt format is: `(venv_identifier) BASE_PS1$ `
 
 ### R1: Activation (`pyve <name>`)
 
-**R1.1** - When `pyve <name>` is called, search for `.venv/<name>/` starting from the current directory and traversing up to `~`.
+**R1.1** - When `pyve <name>` is called, search for `.venv/<name>/` starting from the current directory, and if not found, progressively traversing up to `~`, searching at each directory level.
 
-**R1.2** - If current directory is outside of `~`, also check `~/.venv/` as a final fallback.
+**R1.2** - If current directory is outside of `~`, check `~/.venv/` as a final fallback.
 
-**R1.3** - For each `.venv/` directory found, validate that `.venv/<name>/bin/activate` exists before considering it a match.
+**R1.3** - For any `.venv` found, validate that:
+- `.venv` is a directory, else throw a warning that `.venv` is not a valid venv directory and continue up to next directory level
+- `.venv/<name>` exists, then validate:
+    - `.venv/<name>` is a directory, else throw a warning that `.venv/<name>` is not a valid venv and continue up to the next directory level
+- `.venv/<name>/bin/activate` exists, else throw a warning that `.venv/<name>` does not contain a valid `bin/activate`
 
-**R1.4** - If a `.venv/<name>/` directory exists but does not contain a valid `bin/activate`, print a warning and continue searching up the tree.
+**R1.4** - If no valid venv is found after exhausting the search path, print an error message.
 
-**R1.5** - If no valid venv is found after exhausting the search path, print an error message.
+**R1.5** - On successful activation, print a message showing which venv was activated and its location (e.g., "Activated main from ~/proj/foo/.venv/").
 
-**R1.6** - On successful activation, print a message showing which venv was activated and its location (e.g., "Activated main from ~/proj/foo/.venv/").
+**R1.6** - On successful activation, update `PS1` to show the venv identifier as specified in the "Prompt Customization" section above.
 
-**R1.7** - On successful activation, update `PS1` to show the venv identifier:
-  - Global venvs (`~/.venv/<name>`) display as `(<name>)`
-  - Project venvs (`<path>/.venv/<name>`) display as `(<parent_dir>/<name>)`
-
-**R1.8** - Disable the default venv prompt modification (`VIRTUAL_ENV_DISABLE_PROMPT=1`) to use custom prompt handling.
+**R1.7** - Disable the default venv prompt modification (`VIRTUAL_ENV_DISABLE_PROMPT=1`) to use custom prompt handling.
 
 ### R2: Directory Override (`pyve -d <dir> <name>`)
 
-**R2.1** - The `-d` flag specifies a starting directory for the search instead of the current directory.
+**R2.1** - The `-d` flag specifies a directory for the search instead of the current directory.
 
-**R2.2** - `pyve -d ~ main` should activate `~/.venv/main` regardless of current directory.
+**R2.2** - `pyve -d dev/bar main` should activate `~/dev/bar/.venv/main` regardless of current directory.
 
-**R2.3** - The search still traverses up from the specified directory if not found there.
+**R2.3** - The search DOES NOT traverse up from the specified directory if not found there. If the venv `<name>` does not exist in `<dir>/.venv`, then throw an error message.
 
 ### R3: Listing (`pyve ls`)
 
 **R3.1** - List all discoverable venvs from the current directory up to `~`.
 
 **R3.2** - For each venv, display:
-  - The venv name
-  - The branch directory (the directory containing the `.venv/`)
-  - Full path to the venv
+  - The venv name in the first column
+  - The path to the branch directory (the directory containing the `.venv/`) in the second column
+  - Extra trailing spaces in the first column so that it is aligned
+  - Two spaces to delineate columns
+  - A `*` character to indicate which vene (if any) is currently active.
 
-**R3.3** - Group or visually distinguish venvs by their branch directory.
+Example output to `pyve ls` from current directory `~/proj/foo/webscrape`:
+```
+  web       ~/proj/foo/webscrape
+* main      ~/proj/foo
+  data      ~
+  main      ~
+  longname  ~
+```
 
-**R3.4** - Indicate which venv (if any) is currently active.
+### R4: Initializing (`pyve init`)
 
-### R4: Creating (`pyve new <name>`)
+**R4.1** - If `.venv` exists in the current directory, throw an error
 
-**R4.1** - Create a new venv in the current directory's `.venv/` folder.
+**R4.2** If `.venv` does not exist in the current directory, create it and exit silently
 
-**R4.2** - If `.venv/` does not exist in the current directory, print an error and suggest using the `-f` flag.
+### R5: Creating (`pyve new <name>`)
 
-**R4.3** - With `-f` flag (`pyve new -f <name>`), create the `.venv/` directory if it doesn't exist.
+**R5.1** - Create a new venv in the current directory's `.venv/` folder.
 
-**R4.4** - Use `python3 -m venv` with `--prompt <name>` to set the venv's internal prompt name.
+**R5.2** - If `.venv/` does not exist in the current directory, print an error and suggest using the `pyve init` command.
 
-**R4.5** - Print success message with the full path of the created venv.
+**R5.3** - Use `python3 -m venv` with `--prompt <name>` to set the venv's internal prompt name.
 
-### R5: Removing (`pyve rm <name>`)
+**R5.4** - Print success message with the full path of the created venv.
 
-**R5.1** - Remove a venv only from the current directory's `.venv/` folder.
+### R6: Removing (`pyve rm <name>`)
 
-**R5.2** - If the current directory has no `.venv/` or the named venv doesn't exist there, print an error explaining that venvs can only be removed from their branch directory.
+**R6.1** Follow this sequence:
+- Check for venv validity only from current directory (no upward tree traversal) using `pyve-validate`
+- If not valid, exit and print error about venv validity
+- If does not exist (`.venv/` or `.venv/<name>` does not exist) in current branch directory, exit and print error about non existence of venv and remind user that venvs must be deleted from their branch directory
+- If is valid, prompt user to type the name of the venv to confirm deletion
+    - An exact case-sensitive match to `<name>` deletes the venv, and a confirmation message is printed
+    - Any other input cancels the deletion, and a cancelation message is printed
 
-**R5.3** - Removal is interactive by default: prompt user to type "Yes" (exactly) to confirm deletion.
+**R6.2** - If the venv being removed is currently active, deactivate it first.
 
-**R5.4** - Any input other than "Yes" cancels the removal and prints a message that the venv was not removed.
+### R7: Deactivation (`pyve off`)
 
-**R5.5** - If the venv being removed is currently active, deactivate it first.
+**R7.1** - Deactivate the current venv if one is active.
 
-### R6: Deactivation (`pyve off`)
+**R7.2** - Restore `PS1` to the base prompt (without venv prefix).
 
-**R6.1** - Deactivate the current venv if one is active.
+**R7.3** - If no venv is active, print a message indicating there's nothing to deactivate.
 
-**R6.2** - Restore `PS1` to the base prompt (without venv prefix).
+### R8: Validation
 
-**R6.3** - If no venv is active, print a message indicating there's nothing to deactivate.
+**R8.1** - A `.venv/` path is only valid if it is a directory (not a file).
 
-### R7: Validation
+**R8.2** - A venv is only valid if it contains `bin/activate`.
 
-**R7.1** - A `.venv/` path is only valid if it is a directory (not a file).
+**R8.3** - Invalid venvs are skipped with a warning during search.
 
-**R7.2** - A venv is only valid if it contains `bin/activate`.
+**R8.4** - Validation should be handled by a separate function or module `pyve-validate`
 
-**R7.3** - Invalid venvs are skipped with a warning during search.
+### R9: Help (`pyve help` or `pyve -h` or `pyve --help`)
 
-### R8: Help (`pyve help` or `pyve --help`)
-
-**R8.1** - Display usage information and available subcommands.
+**R9.1** - Display usage information and available subcommands.
 
 ---
 
@@ -198,17 +212,16 @@ The prompt format is: `(venv_identifier) BASE_PS1$ `
 #### Task 2.3: Implement `ls` output formatting
 - Traverse full search path
 - Collect all venvs with metadata
-- Format for display (branch directory grouping)
 - Mark active venv
 
 #### Task 2.4: Implement `new` with validation
 - Check for existing `.venv/` directory
-- Handle `-f` flag for directory creation
 - Create venv with `--prompt` flag
 
-#### Task 2.5: Implement `rm` with confirmation
+#### Task 2.5: Implement `init`
+#### Task 2.6: Implement `rm` with confirmation
 - Validate venv exists in current `.venv/`
-- Interactive "Yes" confirmation
+- Interactive confirmation
 - Handle active venv edge case
 
 ### Phase 3: Installation & Polish
@@ -234,5 +247,4 @@ The prompt format is: `(venv_identifier) BASE_PS1$ `
 
 1. Should `pyve-core` be a single Python file or a small package?
 2. Where should `pyve-core` be installed? (`~/.local/bin/`, as part of this repo, etc.)
-3. Should we add a `pyve init` command to create `.venv/` directory (alternative to `new -f`)?
-4. Color scheme for prompt venv indicator?
+3. Color scheme for prompt venv indicator?
