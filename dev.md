@@ -106,7 +106,7 @@ The prompt format is: `(venv_identifier) BASE_PS1$ `
   - The path to the branch directory (the directory containing the `.venv/`) in the second column
   - Extra trailing spaces in the first column so that it is aligned
   - Two spaces to delineate columns
-  - A `*` character to indicate which vene (if any) is currently active.
+  - A `*` character to indicate which venv (if any) is currently active.
 
 Example output to `pyve ls` from current directory `~/proj/foo/webscrape`:
 ```
