@@ -28,7 +28,7 @@ The tool uses a hybrid bash/Python architecture:
 All virtual environments are stored in hidden `.venv/` directories:
 
 ```
-~/.venv/              # Global/utility venvs
+~/.venv/              # User-level venvs
     main/
     data/
 
@@ -58,12 +58,15 @@ The first valid match wins (closest to current directory takes precedence).
 
 ### Prompt Customization
 
-When a venv is activated, the prompt is updated to show:
+When a venv is activated, the prompt is updated to show the venv identifier in the format `(<branch_dir>/<venv_name>)`:
 - For `~/.venv/main` → `(~/main)`
 - For `~/proj/foo/.venv/main` → `(foo/main)`
-- The general format for `venv_identifier` is `(<branch_dir>/<venv_name>)`
 
-The prompt format is: `(venv_identifier) BASE_PS1$ `
+The `<branch_dir>` is the directory containing the `.venv/` folder:
+- If the branch directory is `~`, display as `~`
+- Otherwise, display the directory name (not full path)
+
+The prompt format is: `(<branch_dir>/<venv_name>) BASE_PS1$ `
 
 ---
 
@@ -71,17 +74,22 @@ The prompt format is: `(venv_identifier) BASE_PS1$ `
 
 ### R1: Activation (`vup <name>`)
 
-**R1.1** - When `vup <name>` is called, search for `.venv/<name>/` starting from the current directory, and if not found, progressively traversing up to `~`, searching at each directory level.
+**R1.1** - When `vup <name>` is called, search for a valid venv at `.venv/<name>/` starting from the current directory, and if not found, progressively traverse up to `~`, searching at each directory level.
 
-**R1.2** - If current directory is outside of `~`, check `~/.venv/` as a final fallback.
+**R1.2** - If current directory is outside of `~`, search up to the filesystem root, then check `~/.venv/` as a final fallback.
 
-**R1.3** - For any `.venv` found, validate that:
-- `.venv` is a directory, else throw a warning that `.venv` is not a valid venv directory and continue up to next directory level
-- `.venv/<name>` exists, then validate:
-    - `.venv/<name>` is a directory, else throw a warning that `.venv/<name>` is not a valid venv and continue up to the next directory level
-- `.venv/<name>/bin/activate` exists, else throw a warning that `.venv/<name>` does not contain a valid `bin/activate`
+**R1.3** - At each directory level, perform validation in this order:
+1. Check if `.venv` exists
+   - If `.venv` does not exist, continue to next directory level (no warning)
+   - If `.venv` exists but is not a directory, print warning and continue to next directory level
+2. Check if `.venv/<name>` exists
+   - If `.venv/<name>` does not exist, continue to next directory level (no warning)
+   - If `.venv/<name>` exists but is not a directory, print warning and continue to next directory level
+3. Check if `.venv/<name>/bin/activate` exists
+   - If it does not exist, print warning and continue to next directory level
+   - If it exists, this is a valid venv - proceed with activation
 
-**R1.4** - If no valid venv is found after exhausting the search path, print an error message.
+**R1.4** - If no valid venv is found after exhausting the search path (including `~/.venv/` fallback if applicable), print an error message.
 
 **R1.5** - On successful activation, print a message showing which venv was activated and its location (e.g., "Activated main from ~/proj/foo/.venv/").
 
@@ -89,26 +97,34 @@ The prompt format is: `(venv_identifier) BASE_PS1$ `
 
 **R1.7** - Disable the default venv prompt modification (`VIRTUAL_ENV_DISABLE_PROMPT=1`) to use custom prompt handling.
 
+**R1.8** - If a venv is already active when activating a new one, implicitly deactivate the current venv first (restore `PS1`), then activate the new venv.
+
 ### R2: Directory Override (`vup -d <dir> <name>`)
 
 **R2.1** - The `-d` flag specifies a directory for the search instead of the current directory.
 
-**R2.2** - `vup -d dev/bar main` should activate `~/dev/bar/.venv/main` regardless of current directory.
+**R2.2** - The `<dir>` path follows standard Linux path conventions:
+- Relative paths are relative to the current working directory
+- Absolute paths and paths starting with `~` are interpreted as-is
+- Example: `vup -d ~/proj/foo main` activates `~/proj/foo/.venv/main`
+- Example: From `/tmp`, running `vup -d dev/bar main` looks for `/tmp/dev/bar/.venv/main`
 
-**R2.3** - The search DOES NOT traverse up from the specified directory if not found there. If the venv `<name>` does not exist in `<dir>/.venv`, then throw an error message.
+**R2.3** - The search DOES NOT traverse up from the specified directory. If the venv `<name>` does not exist or is not valid in `<dir>/.venv/`, print an error message (same validation and error behavior as R1.3/R1.4, but without upward traversal).
 
-### R3: Listing (`vup ls`)
+### R3: Listing (`vup ls [dir]`)
 
-**R3.1** - List all discoverable venvs from the current directory up to `~`.
+**R3.1** - List all discoverable venvs from the starting directory up to `~`.
+- If `[dir]` is provided, start from that directory (following same path conventions as R2.2)
+- If `[dir]` is omitted, start from the current directory
+- If starting directory is outside `~`, fallback to listing venvs in `~/.venv/`
 
 **R3.2** - For each venv, display:
-  - The venv name in the first column
-  - The path to the branch directory (the directory containing the `.venv/`) in the second column
-  - Extra trailing spaces in the first column so that it is aligned
-  - Two spaces to delineate columns
-  - A `*` character to indicate which venv (if any) is currently active.
+- A `*` character in the first column to indicate the currently active venv (space otherwise)
+- The venv name in the second column
+- The path to the branch directory (the directory containing the `.venv/`) in the third column
+- Columns are aligned with two spaces between them
 
-Example output to `vup ls` from current directory `~/proj/foo/webscrape`:
+**R3.3** - Example output of `vup ls` from current directory `~/proj/foo/webscrape`:
 ```
   web       ~/proj/foo/webscrape
 * main      ~/proj/foo
@@ -119,9 +135,11 @@ Example output to `vup ls` from current directory `~/proj/foo/webscrape`:
 
 ### R4: Initializing (`vup init`)
 
-**R4.1** - If `.venv` exists in the current directory, throw an error
+**R4.1** - If `.venv` exists in the current directory, print an error message that includes:
+- Indication that `.venv` already exists
+- Suggestion to use `vup new <name>` to create a new venv
 
-**R4.2** If `.venv` does not exist in the current directory, create it and exit silently
+**R4.2** - If `.venv` does not exist in the current directory, create it and exit silently.
 
 ### R5: Creating (`vup new <name>`)
 
@@ -129,41 +147,46 @@ Example output to `vup ls` from current directory `~/proj/foo/webscrape`:
 
 **R5.2** - If `.venv/` does not exist in the current directory, print an error and suggest using the `vup init` command.
 
-**R5.3** - Use `python3 -m venv` with `--prompt <name>` to set the venv's internal prompt name.
+**R5.3** - If `.venv/<name>` already exists, print an error indicating the venv already exists.
 
-**R5.4** - Print success message with the full path of the created venv.
+**R5.4** - Use `python3 -m venv .venv/<name>` to create the venv.
 
-**R5.5** - After successful creation, automatically activate the new venv (following the activation behavior in R1.5 and R1.6).
+**R5.5** - Print success message with the full path of the created venv.
+
+**R5.6** - After successful creation, automatically activate the new venv (following the activation behavior in R1.5 and R1.6).
 
 ### R6: Removing (`vup rm <name>`)
 
-**R6.1** Follow this sequence:
-- Check for venv validity only from current directory (no upward tree traversal) using the validation function
-- If not valid, exit and print error about venv validity
-- If does not exist (`.venv/` or `.venv/<name>` does not exist) in current branch directory, exit and print error about non existence of venv and remind user that venvs must be deleted from their branch directory
-- If is valid, prompt user to type the name of the venv to confirm deletion
-    - An exact case-sensitive match to `<name>` deletes the venv, and a confirmation message is printed
-    - Any other input cancels the deletion, and a cancelation message is printed
+**R6.1** - Check for venv in current directory only (no upward tree traversal):
+- If `.venv/` does not exist in current directory, print error: venvs must be removed from their branch directory
+- If `.venv/<name>` does not exist, print error: venv not found in current directory's `.venv/`
+- If `.venv/<name>` exists but is not a valid venv (no `bin/activate`), print error about invalid venv
 
-**R6.2** - If the venv being removed is currently active, deactivate it first.
+**R6.2** - If venv is valid, prompt user to type the name of the venv to confirm deletion:
+- An exact case-sensitive match to `<name>` proceeds with deletion
+- Any other input cancels the deletion and prints a cancellation message
+
+**R6.3** - If the venv being removed is currently active, deactivate it after confirmation but before deletion.
+
+**R6.4** - On successful deletion, print a confirmation message.
 
 ### R7: Deactivation (`vup off`)
 
-**R7.1** - Deactivate the current venv if one is active.
+**R7.1** - If a venv is currently active:
+- Deactivate it
+- Restore `PS1` to the base prompt (without venv prefix)
 
-**R7.2** - Restore `PS1` to the base prompt (without venv prefix).
-
-**R7.3** - If no venv is active, print a message indicating there's nothing to deactivate.
+**R7.2** - If no venv is active, print a message indicating there's nothing to deactivate.
 
 ### R8: Validation
 
-**R8.1** - A `.venv/` path is only valid if it is a directory (not a file).
+**R8.1** - Validation logic is handled by a reusable function `validate_venv(path)` within `vup-core`.
 
-**R8.2** - A venv is only valid if it contains `bin/activate`.
+**R8.2** - A path is a valid venv if and only if:
+- The path exists and is a directory
+- The path contains `bin/activate`
 
-**R8.3** - Invalid venvs are skipped with a warning during search.
-
-**R8.4** - Validation should be handled by a reusable function `validate_venv()` within `vup-core`
+**R8.3** - The validation function returns a status indicating: valid, not found, not a directory, or missing activate script.
 
 ### R9: Help (`vup help` or `vup -h` or `vup --help`)
 
@@ -176,13 +199,14 @@ Example output to `vup ls` from current directory `~/proj/foo/webscrape`:
 ### Phase 1: Core Infrastructure
 
 #### Task 1.1: Create `vup-core` Python script
-- Location: `~/.local/bin/vup-core` (or installed via this repo)
+- Location: `~/.local/bin/vup-core`
 - Implement subcommands:
-  - `find <name> [--start-dir <dir>]` - Search for venv, output path or error
+  - `find <name> [--start-dir <dir>] [--no-traverse]` - Search for venv, output path or error
   - `ls [--start-dir <dir>]` - List all discoverable venvs as structured output
-  - `validate <path>` - Check if path is a valid venv
-  - `new <name> [--force] [--dir <dir>]` - Create a new venv
-  - `rm <name> [--dir <dir>]` - Remove a venv (confirmation handled in bash or via flag)
+  - `validate <path>` - Check if path is a valid venv, return status
+  - `init [--dir <dir>]` - Create `.venv/` directory
+  - `new <name> [--dir <dir>]` - Create a new venv
+  - `prompt <venv-path>` - Output the prompt identifier for a venv path
 
 #### Task 1.2: Create `vup` bash function
 - Location: `~/.bash_funcs` (sourced by `~/.bashrc`)
@@ -190,6 +214,7 @@ Example output to `vup ls` from current directory `~/proj/foo/webscrape`:
   - Subcommand routing
   - Activation (source activate, set PS1)
   - Deactivation (restore PS1)
+  - Interactive confirmation for `rm`
   - Call `vup-core` for complex operations
 
 #### Task 1.3: Update `~/.bashrc`
@@ -201,35 +226,43 @@ Example output to `vup ls` from current directory `~/proj/foo/webscrape`:
 
 #### Task 2.1: Implement search algorithm in Python
 - Start from current (or specified) directory
-- Walk up to `~`
+- Walk up to `~` (or root if outside `~`)
 - Fallback to `~/.venv/` if outside `~`
-- Validate each candidate
+- Validate each candidate using `validate_venv()`
 - Return first valid match or error
+- Support `--no-traverse` flag for `-d` behavior
 
 #### Task 2.2: Implement prompt generation
-- Helper function to compute venv display name
-- Global venvs: just the name
-- Project venvs: `<parent>/<name>`
+- Helper function to compute venv display name from path
+- Extract branch directory from venv path
+- Format as `<branch_dir>/<venv_name>`
+- Handle `~` display for home directory
 
 #### Task 2.3: Implement `ls` output formatting
 - Traverse full search path
-- Collect all venvs with metadata
-- Mark active venv
+- Collect all venvs with metadata (name, branch dir, full path)
+- Detect currently active venv via `$VIRTUAL_ENV`
+- Format aligned columns with active indicator
 
-#### Task 2.4: Implement `new` with validation
+#### Task 2.4: Implement `init`
+- Check for existing `.venv/`
+- Create directory or error appropriately
+
+#### Task 2.5: Implement `new` with validation
 - Check for existing `.venv/` directory
-- Create venv with `--prompt` flag
+- Check for existing `.venv/<name>`
+- Create venv with `python3 -m venv`
 
-#### Task 2.5: Implement `init`
-#### Task 2.6: Implement `rm` with confirmation
+#### Task 2.6: Implement `rm`
 - Validate venv exists in current `.venv/`
-- Interactive confirmation
-- Handle active venv edge case
+- Return status for bash to handle confirmation prompt
+- Delete venv directory on confirmation
 
 ### Phase 3: Installation & Polish
 
 #### Task 3.1: Create installation script
-- Copy `vup-core` to appropriate location
+- Copy `vup-core` to `~/.local/bin/`
+- Make executable
 - Add `vup` function to `~/.bash_funcs`
 - Update `~/.bashrc` if needed
 
@@ -237,7 +270,9 @@ Example output to `vup ls` from current directory `~/proj/foo/webscrape`:
 - Test activation from various directories
 - Test edge cases (outside ~, missing .venv, invalid venvs)
 - Test prompt formatting
-- Test new/rm commands
+- Test switching between venvs
+- Test init/new/rm commands
+- Test `vup ls` with and without directory argument
 
 #### Task 3.3: Documentation
 - Usage examples in README
