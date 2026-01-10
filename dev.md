@@ -368,7 +368,7 @@ _vup_deactivate() {
 
 ### Phase 1: Core Infrastructure
 
-#### Task 1.1: Create `vup-core` Python script
+#### Task 1.1: Create `vup-core` Python script [DONE]
 - Location: `~/.local/bin/vup-core`
 - Single executable Python file with argparse for subcommand handling
 - Implement subcommands: `find`, `ls`, `validate`, `init`, `new`, `prompt`
@@ -385,7 +385,7 @@ _vup_deactivate() {
 
 ### Phase 2: Implementation Details
 
-#### Task 2.1: Implement search algorithm in Python
+#### Task 2.1: Implement search algorithm in Python [DONE]
 - Start from current (or specified) directory
 - Walk up to `~`
 - Fallback to `~/.venv/` if outside `~`
@@ -393,30 +393,30 @@ _vup_deactivate() {
 - Return first valid match or error
 - Support `--no-traverse` flag for `-d` behavior
 
-#### Task 2.2: Implement prompt generation
+#### Task 2.2: Implement prompt generation [DONE]
 - Helper function to compute venv display name from path
 - Extract branch directory from venv path
 - Format as `<branch_dir>/<venv_name>`
 - Handle `~` display for home directory
 
-#### Task 2.3: Implement `ls` output formatting
+#### Task 2.3: Implement `ls` output formatting [DONE]
 - Traverse full search path
 - Collect all venvs with metadata (name, branch dir, full path)
 - Detect currently active venv via `$VIRTUAL_ENV`
 - Format aligned columns with active indicator
 - Fallback to `~/.venv/` listing when outside `~`
 
-#### Task 2.4: Implement `init`
+#### Task 2.4: Implement `init` [DONE]
 - Check for existing `.venv/`
 - Create directory or error appropriately
 - Handle fallback to `~/.venv/` when outside `~`
 
-#### Task 2.5: Implement `new` with validation
+#### Task 2.5: Implement `new` with validation [DONE]
 - Check for existing `.venv/` directory (or auto-create when outside `~`)
 - Check for existing `.venv/<name>`
 - Create venv with `python3 -m venv`
 
-#### Task 2.6: Implement `rm` support
+#### Task 2.6: Implement `rm` support [PARTIAL - validate done, bash pending]
 - `validate` subcommand returns status for bash to handle confirmation
 - Bash handles interactive prompt, warning for home venvs, and deletion
 
