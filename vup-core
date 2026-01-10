@@ -39,8 +39,65 @@ def validate_venv(path: Path) -> int:
 
 def cmd_find(args):
     """Find a venv by name, searching upward from start directory."""
-    # TODO: Implement search algorithm
-    print(f"[stub] find: name={args.name}, start_dir={args.start_dir}, no_traverse={args.no_traverse}", file=sys.stderr)
+    name = args.name
+
+    # Determine start directory
+    if args.start_dir:
+        start = Path(args.start_dir).expanduser().resolve()
+        if not is_within_home(start):
+            print(f"Error: '{args.start_dir}' is not within home directory", file=sys.stderr)
+            return 1
+        if not start.is_dir():
+            print(f"Error: '{args.start_dir}' is not a directory", file=sys.stderr)
+            return 1
+    else:
+        start = Path.cwd()
+
+    # If outside home (and no explicit start-dir), fallback to ~/.venv/
+    if not is_within_home(start):
+        venv_path = HOME / '.venv' / name
+        status = validate_venv(venv_path)
+        if status == 0:
+            print(venv_path)
+            return 0
+        elif status == 1:
+            print(f"Error: venv '{name}' not found in ~/.venv/", file=sys.stderr)
+        elif status == 2:
+            print(f"Error: ~/.venv/{name} is not a directory", file=sys.stderr)
+        elif status == 3:
+            print(f"Error: ~/.venv/{name} is not a valid venv (missing bin/activate)", file=sys.stderr)
+        return 1
+
+    # Search upward from start to HOME
+    current = start.resolve()
+    while True:
+        venv_dir = current / '.venv'
+        venv_path = venv_dir / name
+
+        # Check .venv exists
+        if venv_dir.exists():
+            if not venv_dir.is_dir():
+                print(f"Warning: {venv_dir} exists but is not a directory", file=sys.stderr)
+            elif venv_path.exists():
+                if not venv_path.is_dir():
+                    print(f"Warning: {venv_path} exists but is not a directory", file=sys.stderr)
+                elif not (venv_path / 'bin' / 'activate').exists():
+                    print(f"Warning: {venv_path} is not a valid venv (missing bin/activate)", file=sys.stderr)
+                else:
+                    # Found valid venv
+                    print(venv_path)
+                    return 0
+
+        # Stop conditions
+        if args.no_traverse or current == HOME:
+            break
+        current = current.parent
+
+    # Not found
+    if args.no_traverse:
+        print(f"Error: venv '{name}' not found in {start}/.venv/", file=sys.stderr)
+    else:
+        print(f"Error: venv '{name}' not found", file=sys.stderr)
     return 1
 
 
