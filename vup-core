@@ -2,6 +2,7 @@
 """vup-core - Python backend for vup virtual environment manager."""
 
 import argparse
+import subprocess
 import sys
 import os
 from pathlib import Path
@@ -57,9 +58,40 @@ def cmd_init(args):
 
 def cmd_new(args):
     """Create a new venv."""
-    # TODO: Implement new
-    print(f"[stub] new: name={args.name}", file=sys.stderr)
-    return 1
+    cwd = Path.cwd()
+    in_home = is_within_home(cwd)
+    target = cwd if in_home else HOME
+    venv_dir = target / '.venv'
+    venv_path = venv_dir / args.name
+
+    # Check .venv/ exists (different behavior in/out of home)
+    if not venv_dir.exists():
+        if in_home:
+            print(f"Error: .venv/ does not exist in {target}", file=sys.stderr)
+            print("Use 'vup init' first to initialize.", file=sys.stderr)
+            return 1
+        else:
+            # Auto-create ~/.venv/ when outside home
+            venv_dir.mkdir()
+
+    # Check if venv already exists
+    if venv_path.exists():
+        print(f"Error: venv '{args.name}' already exists in {venv_dir}", file=sys.stderr)
+        return 1
+
+    # Create the venv
+    result = subprocess.run(
+        [sys.executable, '-m', 'venv', str(venv_path)],
+        capture_output=True,
+        text=True
+    )
+    if result.returncode != 0:
+        print(f"Error creating venv: {result.stderr}", file=sys.stderr)
+        return 1
+
+    # Output path for bash to activate
+    print(venv_path)
+    return 0
 
 
 def cmd_prompt(args):
