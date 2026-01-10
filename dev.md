@@ -371,10 +371,10 @@ _vup_deactivate() {
 #### Task 1.1: Create `vup-core` Python script [DONE]
 - Location: `~/.local/bin/vup-core`
 - Single executable Python file with argparse for subcommand handling
-- Implement subcommands: `find`, `ls`, `validate`, `init`, `new`, `prompt`
+- Implement subcommands: `find`, `ls`, `validate`, `init`, `new`, `prompt`, `help`
 
-#### Task 1.2: Create `vup` bash function
-- Location: `~/.bash_funcs` (sourced by `~/.bashrc`)
+#### Task 1.2: Create `vup` bash function [DONE]
+- Location: `vup.bash` in repo (install to `~/.bash_funcs`)
 - Implement subcommand routing and shell-level operations
 - Helper functions: `_vup_activate`, `_vup_deactivate`
 
@@ -416,7 +416,7 @@ _vup_deactivate() {
 - Check for existing `.venv/<name>`
 - Create venv with `python3 -m venv`
 
-#### Task 2.6: Implement `rm` support [PARTIAL - validate done, bash pending]
+#### Task 2.6: Implement `rm` support [DONE]
 - `validate` subcommand returns status for bash to handle confirmation
 - Bash handles interactive prompt, warning for home venvs, and deletion
 
