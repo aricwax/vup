@@ -428,14 +428,10 @@ _vup_deactivate() {
 - Add `vup` function to `~/.bash_funcs`
 - Update `~/.bashrc` if needed
 
-#### Task 3.2: Testing
-- Test activation from various directories within `~`
-- Test fallback behavior when outside `~`
-- Test prompt formatting
-- Test switching between venvs
-- Test init/new/rm commands
-- Test `vup ls` with and without directory argument
-- Test home venv removal warning
+#### Task 3.2: Testing [DONE]
+- `test_vup.py` - Python CLI tests via subprocess (19 tests)
+- `test_integration.sh` - Bash end-to-end tests (12 tests)
+- Run with `./test_vup.py && ./test_integration.sh`
 
 #### Task 3.3: Documentation
 - Usage examples in README
