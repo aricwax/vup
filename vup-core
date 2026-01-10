@@ -103,9 +103,71 @@ def cmd_find(args):
 
 def cmd_ls(args):
     """List all discoverable venvs."""
-    # TODO: Implement listing
-    print(f"[stub] ls: start_dir={args.start_dir}", file=sys.stderr)
-    return 1
+    # Determine start directory
+    if args.start_dir:
+        start = Path(args.start_dir).expanduser().resolve()
+        if not is_within_home(start):
+            print(f"Error: '{args.start_dir}' is not within home directory", file=sys.stderr)
+            return 1
+        if not start.is_dir():
+            print(f"Error: '{args.start_dir}' is not a directory", file=sys.stderr)
+            return 1
+    else:
+        start = Path.cwd()
+
+    # Get active venv path for comparison
+    active_venv = os.environ.get('VIRTUAL_ENV')
+    if active_venv:
+        active_venv = Path(active_venv).resolve()
+
+    # Collect all venvs: list of (name, branch_dir, full_path)
+    venvs = []
+
+    if not is_within_home(start):
+        # Outside home: only list ~/.venv/
+        dirs_to_check = [HOME]
+    else:
+        # Within home: traverse from start to HOME
+        dirs_to_check = []
+        current = start.resolve()
+        while True:
+            dirs_to_check.append(current)
+            if current == HOME:
+                break
+            current = current.parent
+
+    for dir_path in dirs_to_check:
+        venv_dir = dir_path / '.venv'
+        if venv_dir.is_dir():
+            for entry in sorted(venv_dir.iterdir()):
+                if entry.is_dir() and (entry / 'bin' / 'activate').exists():
+                    venvs.append((entry.name, dir_path, entry.resolve()))
+
+    if not venvs:
+        return 0
+
+    # Format output with aligned columns
+    max_name_len = max(len(v[0]) for v in venvs)
+
+    for name, branch_dir, full_path in venvs:
+        # Active indicator
+        if active_venv and full_path == active_venv:
+            indicator = '*'
+        else:
+            indicator = ' '
+
+        # Format branch dir for display
+        if branch_dir == HOME:
+            branch_display = '~'
+        else:
+            try:
+                branch_display = '~/' + str(branch_dir.relative_to(HOME))
+            except ValueError:
+                branch_display = str(branch_dir)
+
+        print(f"{indicator} {name:<{max_name_len}}  {branch_display}")
+
+    return 0
 
 
 def cmd_validate(args):
