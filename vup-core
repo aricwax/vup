@@ -253,6 +253,27 @@ def cmd_prompt(args):
     return 0
 
 
+def cmd_help(args):
+    """Display user-facing help message."""
+    print("""vup - Python virtual environment manager
+
+Usage:
+  vup <name>           Activate venv (searches upward from cwd to ~)
+  vup -d <dir> <name>  Activate venv from specific directory (no traversal)
+  vup ls [dir]         List discoverable venvs
+  vup init             Create .venv/ directory in cwd
+  vup new <name>       Create and activate a new venv
+  vup rm <name>        Remove a venv (must be in branch directory)
+  vup off              Deactivate current venv
+  vup help             Show this help message
+
+Environment:
+  venvs are stored in .venv/ directories
+  Search starts from cwd and traverses up to ~
+  When outside ~, commands fall back to ~/.venv/""")
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog='vup-core',
@@ -290,6 +311,10 @@ def main():
     p_prompt = subparsers.add_parser('prompt', help='Generate prompt identifier')
     p_prompt.add_argument('venv_path', help='Full path to the venv')
     p_prompt.set_defaults(func=cmd_prompt)
+
+    # help
+    p_help = subparsers.add_parser('help', help='Show user-facing help')
+    p_help.set_defaults(func=cmd_help)
 
     args = parser.parse_args()
     return args.func(args)
