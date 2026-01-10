@@ -4,6 +4,18 @@
 import argparse
 import sys
 import os
+from pathlib import Path
+
+HOME = Path.home()
+
+
+def is_within_home(path: Path) -> bool:
+    """Check if path is within the user's home directory."""
+    try:
+        path.resolve().relative_to(HOME)
+        return True
+    except ValueError:
+        return False
 
 
 def cmd_find(args):
@@ -30,9 +42,17 @@ def cmd_validate(args):
 
 def cmd_init(args):
     """Initialize .venv/ directory."""
-    # TODO: Implement init
-    print("[stub] init", file=sys.stderr)
-    return 1
+    cwd = Path.cwd()
+    target = cwd if is_within_home(cwd) else HOME
+    venv_dir = target / '.venv'
+
+    if venv_dir.exists():
+        print(f"Error: .venv already exists in {target}", file=sys.stderr)
+        print("Use 'vup new <name>' to create a new venv.", file=sys.stderr)
+        return 1
+
+    venv_dir.mkdir()
+    return 0
 
 
 def cmd_new(args):
