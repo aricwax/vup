@@ -121,8 +121,16 @@ def cmd_new(args):
 
 def cmd_prompt(args):
     """Generate prompt identifier from venv path."""
-    # TODO: Implement prompt generation
-    print(f"[stub] prompt: venv_path={args.venv_path}", file=sys.stderr)
+    venv_path = Path(args.venv_path).resolve()
+    venv_name = venv_path.name
+    branch_dir = venv_path.parent.parent  # parent of .venv/
+
+    if branch_dir == HOME:
+        branch_name = '~'
+    else:
+        branch_name = branch_dir.name
+
+    print(f"{branch_name}/{venv_name}")
     return 0
 
 
