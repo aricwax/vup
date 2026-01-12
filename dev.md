@@ -1,30 +1,10 @@
 # vup - Python Virtual Environment Manager
 
-## Design
-
-### Overview
+## Overview
 
 `vup` is a Python virtual environment management tool that provides intuitive venv discovery and activation based on directory context. It searches for `.venv/` directories starting from the current working directory and traversing up the filesystem tree to `~`, allowing users to activate venvs from anywhere within a project hierarchy.
 
 **Scope:** `vup` manages venvs within the user's home directory (`~`). When operating outside of `~`, most commands fall back to `~/.venv/` so that home venvs remain accessible from anywhere in the filesystem.
-
-### Architecture
-
-The tool uses a hybrid bash/Python architecture:
-
-- **Bash function (`vup`)** - The user-facing entry point, sourced into the shell via a user's `~/.bashrc` or `~/.bash_funcs` file. Handles shell-level operations that cannot be done from a subprocess:
-  - Sourcing the venv `activate` script
-  - Setting/restoring the `PS1` prompt
-  - Deactivation
-  - Routing subcommands to the Python core
-  - Interactive confirmation prompts
-
-- **Python script (`vup-core`)** - Handles all complex logic:
-  - Directory traversal and `.venv/` discovery
-  - venv validation (checking for `bin/activate`)
-  - Listing all discoverable venvs
-  - Creating new venvs
-  - Prompt identifier generation
 
 ### Directory Structure Convention
 
@@ -71,6 +51,7 @@ The `<branch_dir>` is the directory containing the `.venv/` folder:
 - Otherwise, display the directory name (not full path)
 
 The prompt format is: `(<branch_dir>/<venv_name>) BASE_PS1$ `
+
 
 ---
 
@@ -231,24 +212,53 @@ Warning: This will permanently remove the '<name>' venv from your home directory
 
 ---
 
-## Planning
+## Architecture
 
-### Architecture Details
+### Responsibility Split
 
-#### Responsibility Split
+The tool uses a hybrid bash/Python architecture:
+
+- **Bash function (`vup`)** - The user-facing entry point, sourced into the shell via a user's `~/.bashrc` or `~/.bash_funcs` file. Handles shell-level operations that cannot be done from a subprocess:
+  - Sourcing the venv `activate` script
+  - Setting/restoring the `PS1` prompt
+  - Deactivation
+  - Routing subcommands to the Python core
+  - Interactive confirmation prompts
+
+- **Python script (`vup-core`)** - Handles all complex logic:
+  - Directory traversal and `.venv/` discovery
+  - venv validation (checking for `bin/activate`)
+  - Listing all discoverable venvs
+  - Creating new venvs
+  - Prompt identifier generation
 
 The hybrid architecture exists because **bash must handle anything that modifies the shell environment** - this cannot be done from a subprocess.
 
-| `vup-core` (Python) | `vup` (Bash function) |
-|---------------------|----------------------|
-| Path traversal & search | Source activate scripts |
-| Validation logic | Set/restore PS1 |
-| Listing & formatting | Deactivation |
-| Creating venvs | Interactive confirmation (rm) |
-| Prompt string generation | Subcommand routing |
-| Fallback path resolution | Home venv warning (rm) |
+| `vup-core` (Python script) | `vup` (Bash function)         |
+| -------------------------- | ----------------------------- |
+| Path traversal & search    | Source activate scripts       |
+| Validation logic           | Set/restore PS1               |
+| Listing & formatting       | Deactivation                  |
+| Creating venvs             | Interactive confirmation (rm) |
+| Prompt string generation   | Subcommand routing            |
+| Fallback path resolution   | Home venv warning (rm)        |
 
-#### `vup-core` Subcommands
+### `vup-core`
+
+#### About
+
+`vup-core` is a single-file Python script located at `~/.local/bin/vup-core`. It serves as the backend for all complex logic that doesn't require direct shell environment manipulation.
+
+The script uses `argparse` for subcommand routing and communicates with the bash frontend through:
+- **stdout**: Output data (venv paths, formatted listings, prompt strings)
+- **stderr**: Error and warning messages
+- **Exit codes**: 0 for success, non-zero for various failure conditions
+
+Key helper functions:
+- `is_within_home(path)` - Checks if a path is within `~`
+- `validate_venv(path)` - Validates a venv directory, returning exit codes per R8.3
+
+#### Subcommands
 
 Each subcommand communicates with bash via stdout, stderr, and exit codes.
 
@@ -292,6 +302,42 @@ Each subcommand communicates with bash via stdout, stderr, and exit codes.
 - Generates prompt identifier from venv path
 - stdout: Prompt string (e.g., `foo/main` or `~/main`)
 - Exit 0 always
+
+### `vup.bash`
+
+#### About
+
+`vup.bash` contains shell functions that are sourced into the user's shell session (typically via `~/.bashrc` or `~/.bash_funcs`). These functions handle all operations that require direct shell environment manipulation—things that cannot be done from a subprocess.
+
+Installation requires setting `BASE_PS1` to the user's prompt before sourcing, and exporting `VIRTUAL_ENV_DISABLE_PROMPT=1` to prevent the default venv prompt modification.
+
+#### Functions
+
+**`vup`**
+The main entry point. Routes subcommands to either `vup-core` or internal handlers:
+- `ls`, `init`: Passed directly to `vup-core`
+- `new <name>`: Calls `vup-core new`, then activates the created venv
+- `rm <name>`: Validates via `vup-core`, handles confirmation prompt, performs deletion
+- `off`: Deactivates current venv
+- `help`, `-h`, `--help`: Displays help (tries `vup-core help`, falls back to `_vup_help`)
+- `-d <dir> <name>`: Calls `vup-core find` with `--no-traverse`, then activates
+- `<name>` (default): Calls `vup-core find`, then activates
+
+**`_vup_activate <venv_path>`**
+Activates a venv at the given path:
+1. Deactivates any currently active venv
+2. Sources `<venv_path>/bin/activate`
+3. Generates prompt identifier via `vup-core prompt`
+4. Sets `PS1` to `(<prompt_id>) $BASE_PS1`
+5. Prints activation message
+
+**`_vup_deactivate`**
+Deactivates the current venv and restores `PS1` to `$BASE_PS1`.
+
+**`_vup_help`**
+Displays usage information as a fallback when `vup-core help` is unavailable.
+
+## Planning
 
 
 ### Phase 1: Core Infrastructure
