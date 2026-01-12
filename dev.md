@@ -81,6 +81,7 @@ The prompt format is: `(<branch_dir>/<venv_name>) BASE_PS1$ `
 **R0.1** - `vup` primarily operates within the user's home directory (`~`). When the current working directory is outside of `~`, commands fall back to operating on `~/.venv/` instead.
 
 **R0.2** - Fallback behavior by command when outside `~`:
+
 | Command | Behavior outside `~` |
 |---------|---------------------|
 | `vup <name>` | Activates `~/.venv/<name>` |
@@ -292,79 +293,6 @@ Each subcommand communicates with bash via stdout, stderr, and exit codes.
 - stdout: Prompt string (e.g., `foo/main` or `~/main`)
 - Exit 0 always
 
-#### Bash Function Structure
-
-```bash
-vup() {
-    local in_home=true
-    case "$PWD" in
-        "$HOME"*) ;;
-        *) in_home=false ;;
-    esac
-
-    case "$1" in
-        ls)
-            vup-core ls "${@:2}"
-            ;;
-        init)
-            vup-core init
-            ;;
-        new)
-            local path
-            path=$(vup-core new "$2") || return 1
-            _vup_activate "$path"
-            ;;
-        rm)
-            # rm has no fallback - must be in branch directory
-            if [[ "$in_home" == false ]]; then
-                echo "Error: venvs must be removed from their branch directory." >&2
-                return 1
-            fi
-            vup-core validate ".venv/$2" || return 1
-            # Extra warning for home venvs
-            if [[ "$PWD" == "$HOME" ]]; then
-                echo "Warning: This will permanently remove the '$2' venv from your home directory (~/.venv/)."
-            fi
-            read -p "Type '$2' to confirm removal: " confirm
-            if [[ "$confirm" == "$2" ]]; then
-                [[ "$VIRTUAL_ENV" == "$PWD/.venv/$2" ]] && _vup_deactivate
-                rm -rf ".venv/$2"
-                echo "Removed $2"
-            else
-                echo "Removal cancelled"
-            fi
-            ;;
-        off)
-            [[ -n "$VIRTUAL_ENV" ]] && _vup_deactivate || echo "No venv active"
-            ;;
-        help|-h|--help)
-            vup-core help
-            ;;
-        -d)
-            local path
-            path=$(vup-core find "$3" --start-dir "$2" --no-traverse) || return 1
-            _vup_activate "$path"
-            ;;
-        *)
-            local path
-            path=$(vup-core find "$1") || return 1
-            _vup_activate "$path"
-            ;;
-    esac
-}
-
-_vup_activate() {
-    [[ -n "$VIRTUAL_ENV" ]] && deactivate
-    source "$1/bin/activate"
-    PS1="($(vup-core prompt "$1")) $BASE_PS1\$ "
-    echo "Activated $(basename "$1") from $(dirname "$1")/"
-}
-
-_vup_deactivate() {
-    deactivate
-    PS1="$BASE_PS1\$ "
-}
-```
 
 ### Phase 1: Core Infrastructure
 
