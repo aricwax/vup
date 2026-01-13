@@ -1,48 +1,49 @@
 #!/usr/bin/env python3
-# vup-core - Python backend for vup virtual environment manager
-#
-# This script handles all complex logic for vup that doesn't require direct
-# shell environment manipulation. It is called by the vup bash function
-# (vup.bash) which handles shell-level operations like sourcing activate
-# scripts and modifying PS1.
-#
-# Communication with bash:
-#   stdout  - Output data (venv paths, formatted listings, prompt strings)
-#   stderr  - Error and warning messages
-#   exit    - 0 for success, non-zero for failure
-#
-# Subcommands:
-#   find <name> [--start-dir <dir>] [--no-traverse]
-#       Search for a venv by name, starting from cwd (or --start-dir) and
-#       traversing up to ~. Outputs full path on success.
-#
-#   ls [--start-dir <dir>]
-#       List all discoverable venvs from cwd (or --start-dir) up to ~.
-#       Outputs formatted, aligned table with active indicator.
-#
-#   validate <path>
-#       Check if a path is a valid venv. Exit codes: 0=valid, 1=not found,
-#       2=not a directory, 3=missing bin/activate.
-#
-#   init
-#       Create .venv/ directory in cwd (or ~ if outside home).
-#
-#   new <name>
-#       Create a new venv. Outputs full path for bash to activate.
-#
-#   prompt <venv-path>
-#       Generate prompt identifier (e.g., "foo/main" or "~/main").
-#
-#   help
-#       Display user-facing help message.
-#
-# Testing:
-#   All subcommands are tested by test_vup_core.py via subprocess calls.
-#
-# Fallback behavior:
-#   When cwd is outside ~, commands fall back to operating on ~/.venv/.
-#
-# See dev.md for full design documentation.
+"""vup-core - Python backend for vup virtual environment manager.
+
+This script handles all complex logic for vup that doesn't require direct
+shell environment manipulation. It is called by the vup bash function
+(vup.bash) which handles shell-level operations like sourcing activate
+scripts and modifying PS1.
+
+Communication with bash:
+    stdout  - Output data (venv paths, formatted listings, prompt strings)
+    stderr  - Error and warning messages
+    exit    - 0 for success, non-zero for failure
+
+Subcommands:
+    find <name> [--start-dir <dir>] [--no-traverse]
+        Search for a venv by name, starting from cwd (or --start-dir) and
+        traversing up to ~. Outputs full path on success.
+
+    ls [--start-dir <dir>]
+        List all discoverable venvs from cwd (or --start-dir) up to ~.
+        Outputs formatted, aligned table with active indicator.
+
+    validate <path>
+        Check if a path is a valid venv. Exit codes: 0=valid, 1=not found,
+        2=not a directory, 3=missing bin/activate.
+
+    init
+        Create .venv/ directory in cwd (or ~ if outside home).
+
+    new <name>
+        Create a new venv. Outputs full path for bash to activate.
+
+    prompt <venv-path>
+        Generate prompt identifier (e.g., "foo/main" or "~/main").
+
+    help
+        Display user-facing help message.
+
+Testing:
+    All subcommands are tested by test_vup_core.py via subprocess calls.
+
+Fallback behavior:
+    When cwd is outside ~, commands fall back to operating on ~/.venv/.
+
+See dev.md for full design documentation.
+"""
 
 import argparse
 import subprocess
@@ -53,15 +54,15 @@ from pathlib import Path
 HOME = Path.home()
 
 
-# is_within_home(path)
-# Check if a path is within the user's home directory.
-#
-# Args:
-#   path: Path object to check
-#
-# Returns:
-#   True if path is under ~, False otherwise
 def is_within_home(path: Path) -> bool:
+    """Check if a path is within the user's home directory.
+
+    Args:
+        path: Path object to check.
+
+    Returns:
+        True if path is under ~, False otherwise.
+    """
     try:
         # relative_to() raises ValueError if path is not under HOME
         path.resolve().relative_to(HOME)
@@ -70,20 +71,18 @@ def is_within_home(path: Path) -> bool:
         return False
 
 
-# validate_venv(path)
-# Check if a path is a valid Python virtual environment.
-#
-# A valid venv is a directory containing bin/activate.
-#
-# Args:
-#   path: Path object to the venv directory
-#
-# Returns:
-#   0: valid venv
-#   1: path not found
-#   2: path exists but is not a directory
-#   3: directory exists but missing bin/activate
 def validate_venv(path: Path) -> int:
+    """Check if a path is a valid Python virtual environment.
+
+    A valid venv is a directory containing bin/activate.
+
+    Args:
+        path: Path object to the venv directory.
+
+    Returns:
+        0 if valid venv, 1 if path not found, 2 if path exists but is not
+        a directory, 3 if directory exists but missing bin/activate.
+    """
     if not path.exists():
         return 1
     if not path.is_dir():
@@ -93,25 +92,24 @@ def validate_venv(path: Path) -> int:
     return 0
 
 
-# cmd_find(args)
-# Find a venv by name, searching upward from start directory to ~.
-#
-# Searches for .venv/<name>/ starting from cwd (or --start-dir) and traversing
-# up the directory tree to ~. If --no-traverse is set, only checks the start
-# directory. When outside ~, falls back to ~/.venv/<name>.
-#
-# Args:
-#   args.name: Name of the venv to find
-#   args.start_dir: Optional starting directory (default: cwd)
-#   args.no_traverse: If True, don't traverse up the directory tree
-#
-# Output:
-#   stdout: Full path to venv on success
-#   stderr: Error/warning messages
-#
-# Returns:
-#   0 on success, 1 on failure
 def cmd_find(args):
+    """Find a venv by name, searching upward from start directory to ~.
+
+    Searches for .venv/<name>/ starting from cwd (or --start-dir) and traversing
+    up the directory tree to ~. If --no-traverse is set, only checks the start
+    directory. When outside ~, falls back to ~/.venv/<name>.
+
+    Args:
+        args: Namespace with name (str), start_dir (str or None),
+            and no_traverse (bool).
+
+    Output:
+        stdout: Full path to venv on success.
+        stderr: Error/warning messages.
+
+    Returns:
+        0 on success, 1 on failure.
+    """
     name = args.name
 
     # Determine start directory
@@ -175,26 +173,26 @@ def cmd_find(args):
     return 1
 
 
-# cmd_ls(args)
-# List all discoverable venvs from start directory up to ~.
-#
-# Traverses from cwd (or --start-dir) up to ~ and lists all valid venvs found
-# in .venv/ directories along the way. When outside ~, only lists ~/.venv/.
-# Output is formatted as an aligned table with an active indicator (*).
-#
-# Args:
-#   args.start_dir: Optional starting directory (default: cwd)
-#
-# Output:
-#   stdout: Formatted table with columns: active indicator, name, branch dir
-#   stderr: Error messages
-#
-# Returns:
-#   0 on success, 1 on failure
-#
-# Environment:
-#   VIRTUAL_ENV: Used to determine which venv is currently active
 def cmd_ls(args):
+    """List all discoverable venvs from start directory up to ~.
+
+    Traverses from cwd (or --start-dir) up to ~ and lists all valid venvs found
+    in .venv/ directories along the way. When outside ~, only lists ~/.venv/.
+    Output is formatted as an aligned table with an active indicator (*).
+
+    Args:
+        args: Namespace with start_dir (str or None).
+
+    Output:
+        stdout: Formatted table with columns: active indicator, name, branch dir.
+        stderr: Error messages.
+
+    Returns:
+        0 on success, 1 on failure.
+
+    Environment:
+        VIRTUAL_ENV: Used to determine which venv is currently active.
+    """
     # Determine start directory
     if args.start_dir:
         start = Path(args.start_dir).expanduser().resolve()
@@ -265,25 +263,23 @@ def cmd_ls(args):
     return 0
 
 
-# cmd_validate(args)
-# Validate a venv path and print error message if invalid.
-#
-# Wrapper around validate_venv() that outputs human-readable error messages.
-# Used by vup.bash to check venvs before operations like rm.
-#
-# Args:
-#   args.path: Path to the venv directory to validate
-#
-# Output:
-#   stdout: (empty)
-#   stderr: Error message if invalid
-#
-# Returns:
-#   0: valid venv
-#   1: path not found
-#   2: path is not a directory
-#   3: missing bin/activate
 def cmd_validate(args):
+    """Validate a venv path and print error message if invalid.
+
+    Wrapper around validate_venv() that outputs human-readable error messages.
+    Used by vup.bash to check venvs before operations like rm.
+
+    Args:
+        args: Namespace with path (str).
+
+    Output:
+        stdout: (empty).
+        stderr: Error message if invalid.
+
+    Returns:
+        0 if valid venv, 1 if path not found, 2 if path is not a directory,
+        3 if missing bin/activate.
+    """
     path = Path(args.path)
     result = validate_venv(path)
 
@@ -297,22 +293,22 @@ def cmd_validate(args):
     return result
 
 
-# cmd_init(args)
-# Create .venv/ directory in the current directory (or ~ if outside home).
-#
-# Initializes a directory to hold venvs. Must be run before `vup new` when
-# inside ~. When outside ~, creates ~/.venv/ instead.
-#
-# Args:
-#   args: (no arguments used)
-#
-# Output:
-#   stdout: (empty on success)
-#   stderr: Error message if .venv already exists
-#
-# Returns:
-#   0 on success, 1 if .venv already exists
 def cmd_init(args):
+    """Create .venv/ directory in the current directory (or ~ if outside home).
+
+    Initializes a directory to hold venvs. Must be run before `vup new` when
+    inside ~. When outside ~, creates ~/.venv/ instead.
+
+    Args:
+        args: Namespace (no arguments used).
+
+    Output:
+        stdout: (empty on success).
+        stderr: Error message if .venv already exists.
+
+    Returns:
+        0 on success, 1 if .venv already exists.
+    """
     cwd = Path.cwd()
     target = cwd if is_within_home(cwd) else HOME
     venv_dir = target / '.venv'
@@ -326,23 +322,23 @@ def cmd_init(args):
     return 0
 
 
-# cmd_new(args)
-# Create a new Python virtual environment.
-#
-# Creates a venv using `python3 -m venv`. When inside ~, requires .venv/ to
-# exist (use `vup init` first). When outside ~, auto-creates ~/.venv/ if needed.
-# Outputs the full path so vup.bash can activate it.
-#
-# Args:
-#   args.name: Name for the new venv
-#
-# Output:
-#   stdout: Full path to created venv (for bash to activate)
-#   stderr: Error messages
-#
-# Returns:
-#   0 on success, 1 on failure
 def cmd_new(args):
+    """Create a new Python virtual environment.
+
+    Creates a venv using `python3 -m venv`. When inside ~, requires .venv/ to
+    exist (use `vup init` first). When outside ~, auto-creates ~/.venv/ if needed.
+    Outputs the full path so vup.bash can activate it.
+
+    Args:
+        args: Namespace with name (str).
+
+    Output:
+        stdout: Full path to created venv (for bash to activate).
+        stderr: Error messages.
+
+    Returns:
+        0 on success, 1 on failure.
+    """
     cwd = Path.cwd()
     in_home = is_within_home(cwd)
     target = cwd if in_home else HOME
@@ -379,25 +375,25 @@ def cmd_new(args):
     return 0
 
 
-# cmd_prompt(args)
-# Generate a prompt identifier string from a venv path.
-#
-# Extracts the branch directory (parent of .venv/) and venv name to create
-# a compact identifier for the shell prompt. Home directory is displayed as ~.
-#
-# Examples:
-#   ~/.venv/main         -> ~/main
-#   ~/proj/foo/.venv/dev -> foo/dev
-#
-# Args:
-#   args.venv_path: Full path to the venv directory
-#
-# Output:
-#   stdout: Prompt identifier string (e.g., "foo/main" or "~/main")
-#
-# Returns:
-#   0 always
 def cmd_prompt(args):
+    """Generate a prompt identifier string from a venv path.
+
+    Extracts the branch directory (parent of .venv/) and venv name to create
+    a compact identifier for the shell prompt. Home directory is displayed as ~.
+
+    Examples:
+        ~/.venv/main         -> ~/main
+        ~/proj/foo/.venv/dev -> foo/dev
+
+    Args:
+        args: Namespace with venv_path (str).
+
+    Output:
+        stdout: Prompt identifier string (e.g., "foo/main" or "~/main").
+
+    Returns:
+        0 always.
+    """
     venv_path = Path(args.venv_path).resolve()
     venv_name = venv_path.name
     # venv_path is like ~/proj/.venv/main, so parent.parent gets ~/proj (the branch dir)
@@ -412,21 +408,21 @@ def cmd_prompt(args):
     return 0
 
 
-# cmd_help(args)
-# Display the user-facing help message.
-#
-# Shows usage information for all vup commands. This is the help text users
-# see, not the internal argparse help.
-#
-# Args:
-#   args: (no arguments used)
-#
-# Output:
-#   stdout: Help text
-#
-# Returns:
-#   0 always
 def cmd_help(args):
+    """Display the user-facing help message.
+
+    Shows usage information for all vup commands. This is the help text users
+    see, not the internal argparse help.
+
+    Args:
+        args: Namespace (no arguments used).
+
+    Output:
+        stdout: Help text.
+
+    Returns:
+        0 always.
+    """
     print("""vup - Python virtual environment manager
 
 Usage:
@@ -446,12 +442,12 @@ Environment:
     return 0
 
 
-# main()
-# Entry point. Parses command-line arguments and dispatches to subcommand handlers.
-#
-# Returns:
-#   Exit code from the subcommand handler
 def main():
+    """Entry point. Parses command-line arguments and dispatches to subcommand handlers.
+
+    Returns:
+        Exit code from the subcommand handler.
+    """
     parser = argparse.ArgumentParser(
         prog='vup-core',
         description='Python backend for vup virtual environment manager'
