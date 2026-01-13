@@ -342,6 +342,94 @@ Deactivates the current venv and restores `PS1` to `$BASE_PS1`.
 **`_vup_help`**
 Displays usage information as a fallback when `vup-core help` is unavailable.
 
+---
+
+## Testing
+
+The test suite is split into two files that mirror the hybrid bash/Python architecture:
+
+| Test File | Tests | Purpose |
+|-----------|-------|---------|
+| `test_vup_core.py` | 19 | Unit tests for the Python backend via subprocess |
+| `test_integration.sh` | 12 | End-to-end tests for the full bash workflow |
+
+Run all tests with: `./test_vup_core.py && ./test_integration.sh`
+
+### `test_vup_core.py`
+
+#### About
+
+`test_vup_core.py` tests the `vup-core` Python script by invoking it as a subprocess, simulating how the bash function calls it. Each test creates isolated temporary directories within `$HOME` to test venv operations without affecting the user's actual venvs.
+
+The `run()` helper function invokes `vup-core` with arguments and returns `(returncode, stdout, stderr)`, allowing tests to verify all three communication channels.
+
+#### Test Cases
+
+**Help:**
+- `test_help` - Verifies `help` subcommand displays usage information
+
+**Validation (`validate` subcommand):**
+- `test_validate_not_found` - Returns exit code 1 for non-existent paths
+- `test_validate_not_directory` - Returns exit code 2 when path is a file
+- `test_validate_no_activate` - Returns exit code 3 when `bin/activate` is missing
+- `test_validate_valid` - Returns exit code 0 for valid venv structure
+
+**Initialization (`init` subcommand):**
+- `test_init_creates_venv_dir` - Creates `.venv/` directory in cwd
+- `test_init_fails_if_exists` - Fails with error when `.venv/` already exists
+
+**Creation (`new` subcommand):**
+- `test_new_creates_venv` - Creates a functional venv with `bin/activate`
+- `test_new_fails_without_init` - Fails when `.venv/` doesn't exist (requires `init` first)
+- `test_new_fails_if_exists` - Fails when venv name already exists
+
+**Search (`find` subcommand):**
+- `test_find_locates_venv` - Finds venv in current directory's `.venv/`
+- `test_find_traverses_up` - Finds venv in parent directory (upward traversal)
+- `test_find_no_traverse_flag` - `--no-traverse` disables upward search
+- `test_find_not_found` - Returns error when venv doesn't exist
+
+**Listing (`ls` subcommand):**
+- `test_ls_lists_venvs` - Lists all venvs in `.venv/` directory
+- `test_ls_empty` - Returns success even when no venvs exist
+- `test_ls_shows_active` - Marks active venv with `*` (via `VIRTUAL_ENV` env var)
+
+**Prompt generation (`prompt` subcommand):**
+- `test_prompt_home_venv` - Generates `~/name` format for `~/.venv/` venvs
+- `test_prompt_project_venv` - Generates `project/name` format for project venvs
+
+### `test_integration.sh`
+
+#### About
+
+`test_integration.sh` tests the `vup` bash function by running it in real subshells with a proper shell environment. Unlike the Python tests which test `vup-core` in isolation, these tests verify the full user-facing workflow including shell environment manipulation (`PS1`, `VIRTUAL_ENV`, sourcing activate scripts).
+
+Each test uses `setup()` and `teardown()` to create and clean up isolated temporary directories under `$HOME`. The `run_vup()` helper spawns a bash subshell that sources `vup.bash` with proper environment setup (`BASE_PS1`, `VIRTUAL_ENV_DISABLE_PROMPT`).
+
+#### Test Cases
+
+**Help:**
+- `test_help` - `vup help` displays usage information
+- `test_no_args` - `vup` with no arguments shows help
+
+**Core workflow:**
+- `test_init` - `vup init` creates `.venv/` directory
+- `test_new` - `vup new` creates venv and activates it
+- `test_activate` - `vup <name>` activates an existing venv
+- `test_ls` - `vup ls` lists all venvs
+
+**Deactivation:**
+- `test_off` - `vup off` deactivates current venv (unsets `VIRTUAL_ENV`)
+- `test_off_none` - `vup off` prints message when no venv is active
+
+**Advanced features:**
+- `test_subdir_activation` - Activating from subdirectory finds parent's venv (upward traversal)
+- `test_prompt` - Prompt identifier uses correct `<branch>/<name>` format
+- `test_dash_d` - `vup -d <dir> <name>` activates from specific directory
+- `test_switch` - Activating new venv implicitly deactivates the old one
+
+---
+
 ## Planning
 
 
@@ -408,8 +496,7 @@ Displays usage information as a fallback when `vup-core help` is unavailable.
 - Update `~/.bashrc` if needed
 
 #### Task 3.2: Testing [DONE]
-- `test_vup_core.py` - Python CLI tests via subprocess (19 tests)
-- `test_integration.sh` - Bash end-to-end tests (12 tests)
+- See the **Testing** section above for full documentation
 - Run with `./test_vup_core.py && ./test_integration.sh`
 
 #### Task 3.3: Documentation
