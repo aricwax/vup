@@ -403,9 +403,9 @@ Displays usage information as a fallback when `vup-core help` is unavailable.
 - Update `~/.bashrc` if needed
 
 #### Task 3.2: Testing [DONE]
-- `test_vup.py` - Python CLI tests via subprocess (19 tests)
+- `test_vup_core.py` - Python CLI tests via subprocess (19 tests)
 - `test_integration.sh` - Bash end-to-end tests (12 tests)
-- Run with `./test_vup.py && ./test_integration.sh`
+- Run with `./test_vup_core.py && ./test_integration.sh`
 
 #### Task 3.3: Documentation
 - Usage examples in README

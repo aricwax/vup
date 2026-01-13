@@ -37,7 +37,7 @@
 #       Display user-facing help message.
 #
 # Testing:
-#   All subcommands are tested by test_vup.py via subprocess calls.
+#   All subcommands are tested by test_vup_core.py via subprocess calls.
 #
 # Fallback behavior:
 #   When cwd is outside ~, commands fall back to operating on ~/.venv/.
