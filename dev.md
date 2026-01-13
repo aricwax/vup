@@ -303,6 +303,11 @@ Each subcommand communicates with bash via stdout, stderr, and exit codes.
 - stdout: Prompt string (e.g., `foo/main` or `~/main`)
 - Exit 0 always
 
+**`help`**
+- Displays user-facing help message
+- stdout: Usage information and available commands
+- Exit 0 always
+
 ### `vup.bash`
 
 #### About
