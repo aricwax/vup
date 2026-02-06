@@ -123,10 +123,21 @@ if grep -q "vup.sh" "$CONFIG_FILE" 2>/dev/null; then
     warning "vup appears to be already configured in $CONFIG_FILE"
     echo "    Skipping shell configuration."
 else
+    # Check if PATH includes ~/.local/bin
+    need_path=false
+    if ! echo "$PATH" | grep -q "$INSTALL_BIN"; then
+        need_path=true
+    fi
+
     # Ask user for confirmation
     echo ""
     echo "vup needs to add the following lines to $CONFIG_FILE:"
     echo ""
+    if [ "$need_path" = true ]; then
+        echo "    # Add ~/.local/bin to PATH"
+        echo "    export PATH=\"\$HOME/.local/bin:\$PATH\""
+        echo ""
+    fi
     echo "    # vup - Python virtual environment manager"
     echo "    export BASE_PS1='\$ '"
     echo "    export VIRTUAL_ENV_DISABLE_PROMPT=1"
@@ -136,38 +147,39 @@ else
 
     if [ -z "$response" ] || [ "$response" = "y" ] || [ "$response" = "Y" ]; then
         # Add configuration to shell config
-        cat >> "$CONFIG_FILE" << EOF
+        if [ "$need_path" = true ]; then
+            cat >> "$CONFIG_FILE" << EOF
+
+# Add ~/.local/bin to PATH
+export PATH="\$HOME/.local/bin:\$PATH"
 
 # vup - Python virtual environment manager
 export BASE_PS1='\$ '
 export VIRTUAL_ENV_DISABLE_PROMPT=1
 . $INSTALL_SHARE/vup.sh
 EOF
+        else
+            cat >> "$CONFIG_FILE" << EOF
+
+# vup - Python virtual environment manager
+export BASE_PS1='\$ '
+export VIRTUAL_ENV_DISABLE_PROMPT=1
+. $INSTALL_SHARE/vup.sh
+EOF
+        fi
         success "Added vup configuration to $CONFIG_FILE"
     else
         echo "Skipped shell configuration."
         echo ""
         warning "You'll need to manually add these lines to your shell config:"
         echo ""
+        if [ "$need_path" = true ]; then
+            echo "    export PATH=\"\$HOME/.local/bin:\$PATH\""
+        fi
         echo "    export BASE_PS1='\$ '"
         echo "    export VIRTUAL_ENV_DISABLE_PROMPT=1"
         echo "    . $INSTALL_SHARE/vup.sh"
     fi
-fi
-
-# ============================================================================
-# Check PATH
-# ============================================================================
-
-echo ""
-info "Checking PATH..."
-
-if echo "$PATH" | grep -q "$INSTALL_BIN"; then
-    success "$INSTALL_BIN is in your PATH"
-else
-    warning "$INSTALL_BIN is not in your PATH"
-    echo "    Add this to your shell config if not already present:"
-    echo "    export PATH=\"\$HOME/.local/bin:\$PATH\""
 fi
 
 # ============================================================================
