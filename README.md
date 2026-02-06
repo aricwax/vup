@@ -27,6 +27,63 @@ vup main                                     # Just works
 - 🏠 **Home venvs** - Global venvs accessible from anywhere
 - 🎨 **Clean prompts** - Shows `(project/venv)` instead of full paths
 
+## Flexible Hierarchical Model
+
+vup's power comes from its hierarchical venv discovery. You can have multiple venvs at every level of your directory tree, and vup intelligently finds the right one.
+
+### How It Works
+
+Each directory can have its own `.venv/` with multiple venvs inside. When you run `vup main`, it searches **upward** from your current location:
+
+```
+~/.venv/
+    main/           # Home default
+    data/           # Data analysis tools
+
+~/projects/webapp/.venv/
+    main/           # Web app dependencies
+    test/           # Testing tools
+
+~/projects/webapp/experiments/.venv/
+    main/           # Experimental dependencies
+```
+
+**The closest match wins.** Running `vup main` from:
+- `~/projects/webapp/experiments/` → activates `experiments/main`
+- `~/projects/webapp/src/` → activates `webapp/main`
+- `/tmp/` → activates `~/main` (home fallback)
+
+### Powerful Workflows
+
+This enables several useful patterns:
+
+**1. Default home venvs**
+Keep general-purpose tools in `~/.venv/main` - always accessible as a fallback.
+
+**2. Project isolation**
+Each project has its own venvs with project-specific dependencies, even if they have the same name as home venvs.
+
+**3. Experimental subdirectories**
+Create throwaway venvs in subdirectories for experiments without affecting the main project:
+```bash
+cd ~/projects/webapp/experiments
+vup init
+vup new main  # Isolated from ~/projects/webapp/.venv/main
+pip install experimental-package
+# Later: vup rm main (clean up easily)
+```
+
+**4. Multiple venvs per project**
+Different venvs for different purposes - all in one place:
+```bash
+vup main  # Production dependencies
+vup dev   # Development tools (linters, debuggers)
+vup test  # Testing framework
+vup docs  # Documentation builders
+```
+
+The hierarchical model means you can organize venvs however you want, and vup finds the right one based on where you are.
+
 ## Quick Start
 
 ### Installation
