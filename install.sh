@@ -195,16 +195,20 @@ for CONFIG_FILE in "${SELECTED_CONFIGS[@]}"; do
 export PATH="\$HOME/.local/bin:\$PATH"
 
 # vup - Python virtual environment manager
-export PS1_BASE='\$ '
 export VIRTUAL_ENV_DISABLE_PROMPT=1
+# Capture user's original prompt (set in this config file) for use by vup
+PS1_BASE="\${PS1_BASE:-\${PS1:-\\\$ }}"
+export PS1_BASE
 . $INSTALL_SHARE/vup.sh
 EOF
     else
         cat >> "$CONFIG_FILE" << EOF
 
 # vup - Python virtual environment manager
-export PS1_BASE='\$ '
 export VIRTUAL_ENV_DISABLE_PROMPT=1
+# Capture user's original prompt (set in this config file) for use by vup
+PS1_BASE="\${PS1_BASE:-\${PS1:-\\\$ }}"
+export PS1_BASE
 . $INSTALL_SHARE/vup.sh
 EOF
     fi
