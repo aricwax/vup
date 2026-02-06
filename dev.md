@@ -549,10 +549,10 @@ Run with: `./test_install_docker.sh`
 - Multi-shell testing: bash, zsh, dash
 - Docker-based installation testing
 
-#### Task 3.3: Documentation [IN PROGRESS]
+#### Task 3.3: Documentation [DONE]
+- `README.md` - Project overview, features, and usage examples [DONE]
 - `INSTALL.md` - Complete installation guide [DONE]
 - `dev.md` - Architecture and design documentation [DONE]
-- Usage examples in README [TODO]
 
 ---
 
