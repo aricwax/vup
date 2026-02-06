@@ -305,6 +305,8 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 Built with ❤️ for developers who love clean, intuitive tools.
 
+Inspired by the early UNIX developers and their philosophy of creating simple tools that do one thing well and compose beautifully with other tools.
+
 ---
 
 **Documentation:**
