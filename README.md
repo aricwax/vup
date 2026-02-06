@@ -299,7 +299,7 @@ Contributions are welcome! Please feel free to:
 
 ## License
 
-[TODO: Add license]
+MIT License - see [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
