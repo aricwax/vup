@@ -92,63 +92,104 @@ success "Installed vup.sh to $INSTALL_SHARE/vup.sh"
 echo ""
 info "Setting up shell integration..."
 
-# Detect user's shell
-USER_SHELL=$(basename "$SHELL")
+# Detect available shell configuration files
+declare -a SHELL_CONFIGS
+declare -a SHELL_NAMES
+SHELL_INDEX=0
 
-# Determine config file based on shell
-case "$USER_SHELL" in
-    bash)
-        CONFIG_FILE="$HOME/.bashrc"
-        SHELL_NAME="Bash"
-        ;;
-    zsh)
-        CONFIG_FILE="$HOME/.zshrc"
-        SHELL_NAME="Zsh"
-        ;;
-    *)
-        CONFIG_FILE="$HOME/.profile"
-        SHELL_NAME="POSIX shell"
-        warning "Using ~/.profile for shell integration (shell: $USER_SHELL)"
-        ;;
-esac
-
-# Check if config file exists
-if [ ! -f "$CONFIG_FILE" ]; then
-    warning "Config file $CONFIG_FILE does not exist. Creating it."
-    touch "$CONFIG_FILE"
+if [ -f "$HOME/.bashrc" ] || [ "$SHELL" = "bash" ] || [ "$SHELL" = "/bin/bash" ]; then
+    SHELL_INDEX=$((SHELL_INDEX + 1))
+    SHELL_CONFIGS[$SHELL_INDEX]="$HOME/.bashrc"
+    SHELL_NAMES[$SHELL_INDEX]="bash"
 fi
 
-# Check if vup is already configured
-if grep -q "vup.sh" "$CONFIG_FILE" 2>/dev/null; then
-    warning "vup appears to be already configured in $CONFIG_FILE"
-    echo "    Skipping shell configuration."
+if [ -f "$HOME/.zshrc" ] || [ "$SHELL" = "zsh" ] || [ "$SHELL" = "/bin/zsh" ]; then
+    SHELL_INDEX=$((SHELL_INDEX + 1))
+    SHELL_CONFIGS[$SHELL_INDEX]="$HOME/.zshrc"
+    SHELL_NAMES[$SHELL_INDEX]="zsh"
+fi
+
+if [ -f "$HOME/.profile" ]; then
+    SHELL_INDEX=$((SHELL_INDEX + 1))
+    SHELL_CONFIGS[$SHELL_INDEX]="$HOME/.profile"
+    SHELL_NAMES[$SHELL_INDEX]="sh/other"
+fi
+
+# If no shells detected, fall back to current shell
+if [ ${#SHELL_CONFIGS[@]} -eq 0 ]; then
+    USER_SHELL=$(basename "$SHELL")
+    case "$USER_SHELL" in
+        bash) CONFIG_FILE="$HOME/.bashrc" ;;
+        zsh) CONFIG_FILE="$HOME/.zshrc" ;;
+        *) CONFIG_FILE="$HOME/.profile" ;;
+    esac
+    warning "No shell config files detected. Will create $CONFIG_FILE"
+    touch "$CONFIG_FILE"
+    SHELL_CONFIGS[1]="$CONFIG_FILE"
+    SHELL_NAMES[1]="$USER_SHELL"
+fi
+
+# Show detected shells and prompt for selection
+echo ""
+echo "Detected shell configuration files:"
+for i in "${!SHELL_CONFIGS[@]}"; do
+    echo "  $i) ${SHELL_NAMES[$i]}"$'\t'"${SHELL_CONFIGS[$i]}"
+done
+echo ""
+echo "All shells will be configured by default."
+read -p "Press Enter to configure all, or enter numbers to select (e.g., '1 3'): " -r selection
+
+# Parse selection
+SELECTED_CONFIGS=()
+if [ -z "$selection" ] || [ "$selection" = "y" ] || [ "$selection" = "Y" ] || [ "$selection" = "all" ]; then
+    # Configure all shells
+    SELECTED_CONFIGS=("${SHELL_CONFIGS[@]}")
+elif [ "$selection" = "none" ] || [ "$selection" = "n" ] || [ "$selection" = "N" ]; then
+    # Configure none
+    echo ""
+    warning "Skipping shell configuration."
+    echo "You'll need to manually add vup to your shell config. See INSTALL.md for details."
+    echo ""
+    exit 0
 else
-    # Check if PATH includes ~/.local/bin
-    need_path=false
-    if ! echo "$PATH" | grep -q "$INSTALL_BIN"; then
-        need_path=true
+    # Parse space or comma-separated numbers
+    for num in ${selection//,/ }; do
+        if [ -n "${SHELL_CONFIGS[$num]}" ]; then
+            SELECTED_CONFIGS+=("${SHELL_CONFIGS[$num]}")
+        else
+            warning "Invalid selection: $num (skipping)"
+        fi
+    done
+    if [ ${#SELECTED_CONFIGS[@]} -eq 0 ]; then
+        error "No valid shells selected. Exiting."
+        exit 1
+    fi
+fi
+
+# Check if PATH includes ~/.local/bin
+need_path=false
+if ! echo "$PATH" | grep -q "$INSTALL_BIN"; then
+    need_path=true
+fi
+
+# Configure each selected shell
+echo ""
+for CONFIG_FILE in "${SELECTED_CONFIGS[@]}"; do
+    # Create config file if it doesn't exist
+    if [ ! -f "$CONFIG_FILE" ]; then
+        info "Creating $CONFIG_FILE"
+        touch "$CONFIG_FILE"
     fi
 
-    # Ask user for confirmation
-    echo ""
-    echo "vup needs to add the following lines to $CONFIG_FILE:"
-    echo ""
+    # Check if vup is already configured
+    if grep -q "vup.sh" "$CONFIG_FILE" 2>/dev/null; then
+        warning "vup appears to be already configured in $CONFIG_FILE (skipping)"
+        continue
+    fi
+
+    # Add configuration to shell config
     if [ "$need_path" = true ]; then
-        echo "    # Add ~/.local/bin to PATH"
-        echo "    export PATH=\"\$HOME/.local/bin:\$PATH\""
-        echo ""
-    fi
-    echo "    # vup - Python virtual environment manager"
-    echo "    export BASE_PS1='\$ '"
-    echo "    export VIRTUAL_ENV_DISABLE_PROMPT=1"
-    echo "    . $INSTALL_SHARE/vup.sh"
-    echo ""
-    read -p "Add these lines to $CONFIG_FILE? [Y/n] " -r response
-
-    if [ -z "$response" ] || [ "$response" = "y" ] || [ "$response" = "Y" ]; then
-        # Add configuration to shell config
-        if [ "$need_path" = true ]; then
-            cat >> "$CONFIG_FILE" << EOF
+        cat >> "$CONFIG_FILE" << EOF
 
 # Add ~/.local/bin to PATH
 export PATH="\$HOME/.local/bin:\$PATH"
@@ -158,29 +199,17 @@ export BASE_PS1='\$ '
 export VIRTUAL_ENV_DISABLE_PROMPT=1
 . $INSTALL_SHARE/vup.sh
 EOF
-        else
-            cat >> "$CONFIG_FILE" << EOF
+    else
+        cat >> "$CONFIG_FILE" << EOF
 
 # vup - Python virtual environment manager
 export BASE_PS1='\$ '
 export VIRTUAL_ENV_DISABLE_PROMPT=1
 . $INSTALL_SHARE/vup.sh
 EOF
-        fi
-        success "Added vup configuration to $CONFIG_FILE"
-    else
-        echo "Skipped shell configuration."
-        echo ""
-        warning "You'll need to manually add these lines to your shell config:"
-        echo ""
-        if [ "$need_path" = true ]; then
-            echo "    export PATH=\"\$HOME/.local/bin:\$PATH\""
-        fi
-        echo "    export BASE_PS1='\$ '"
-        echo "    export VIRTUAL_ENV_DISABLE_PROMPT=1"
-        echo "    . $INSTALL_SHARE/vup.sh"
     fi
-fi
+    success "Added vup configuration to $CONFIG_FILE"
+done
 
 # ============================================================================
 # Success message
@@ -192,7 +221,7 @@ echo -e "${GREEN}Installation complete!${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 echo "To start using vup:"
-echo "  1. Restart your shell or run: source $CONFIG_FILE"
+echo "  1. Restart your shell (or run 'source <config_file>')"
 echo "  2. Try: vup help"
 echo ""
 echo "Quick start:"

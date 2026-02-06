@@ -14,9 +14,9 @@ echo "Installing prerequisites..."
 apt-get update -qq
 apt-get install -y -qq python3 python3-venv git > /dev/null
 
-# Run installer (auto-accept with yes)
+# Run installer (press Enter to accept defaults)
 echo "Running install.sh..."
-echo "y" | ./install.sh
+echo "" | ./install.sh
 
 # Verify files were installed
 echo ""
