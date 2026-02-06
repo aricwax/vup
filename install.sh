@@ -200,6 +200,7 @@ export VIRTUAL_ENV_DISABLE_PROMPT=1
 PS1_BASE="\${PS1_BASE:-\${PS1:-\\\$ }}"
 export PS1_BASE
 . $INSTALL_SHARE/vup.sh
+# vup is now ready to use. Add any vup commands below this line.
 EOF
     else
         cat >> "$CONFIG_FILE" << EOF
@@ -210,6 +211,7 @@ export VIRTUAL_ENV_DISABLE_PROMPT=1
 PS1_BASE="\${PS1_BASE:-\${PS1:-\\\$ }}"
 export PS1_BASE
 . $INSTALL_SHARE/vup.sh
+# vup is now ready to use. Add any vup commands below this line.
 EOF
     fi
     success "Added vup configuration to $CONFIG_FILE"
