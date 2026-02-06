@@ -52,6 +52,19 @@ import os
 from pathlib import Path
 
 HOME = Path.home()
+QUIET = False  # Global flag for quiet mode
+
+
+def qprint(*args, **kwargs):
+    """Print to stdout only if not in quiet mode."""
+    if not QUIET:
+        print(*args, **kwargs)
+
+
+def qprint_err(*args, **kwargs):
+    """Print to stderr only if not in quiet mode."""
+    if not QUIET:
+        print(*args, **kwargs, file=sys.stderr)
 
 
 def is_within_home(path: Path) -> bool:
@@ -116,10 +129,10 @@ def cmd_find(args):
     if args.start_dir:
         start = Path(args.start_dir).expanduser().resolve()
         if not is_within_home(start):
-            print(f"Error: '{args.start_dir}' is not within home directory", file=sys.stderr)
+            qprint_err(f"Error: '{args.start_dir}' is not within home directory")
             return 1
         if not start.is_dir():
-            print(f"Error: '{args.start_dir}' is not a directory", file=sys.stderr)
+            qprint_err(f"Error: '{args.start_dir}' is not a directory")
             return 1
     else:
         start = Path.cwd()
@@ -129,14 +142,14 @@ def cmd_find(args):
         venv_path = HOME / '.venv' / name
         status = validate_venv(venv_path)
         if status == 0:
-            print(venv_path)
+            print(venv_path)  # Critical output for bash - never suppress
             return 0
         elif status == 1:
-            print(f"Error: venv '{name}' not found in ~/.venv/", file=sys.stderr)
+            qprint_err(f"Error: venv '{name}' not found in ~/.venv/")
         elif status == 2:
-            print(f"Error: ~/.venv/{name} is not a directory", file=sys.stderr)
+            qprint_err(f"Error: ~/.venv/{name} is not a directory")
         elif status == 3:
-            print(f"Error: ~/.venv/{name} is not a valid venv (missing bin/activate)", file=sys.stderr)
+            qprint_err(f"Error: ~/.venv/{name} is not a valid venv (missing bin/activate)")
         return 1
 
     # Search upward from start to HOME
@@ -149,15 +162,15 @@ def cmd_find(args):
         # Emit warnings for invalid states but continue searching up the tree
         if venv_dir.exists():
             if not venv_dir.is_dir():
-                print(f"Warning: {venv_dir} exists but is not a directory", file=sys.stderr)
+                qprint_err(f"Warning: {venv_dir} exists but is not a directory")
             elif venv_path.exists():
                 if not venv_path.is_dir():
-                    print(f"Warning: {venv_path} exists but is not a directory", file=sys.stderr)
+                    qprint_err(f"Warning: {venv_path} exists but is not a directory")
                 elif not (venv_path / 'bin' / 'activate').exists():
-                    print(f"Warning: {venv_path} is not a valid venv (missing bin/activate)", file=sys.stderr)
+                    qprint_err(f"Warning: {venv_path} is not a valid venv (missing bin/activate)")
                 else:
                     # Found valid venv
-                    print(venv_path)
+                    print(venv_path)  # Critical output for bash - never suppress
                     return 0
 
         # Stop conditions
@@ -167,9 +180,9 @@ def cmd_find(args):
 
     # Not found
     if args.no_traverse:
-        print(f"Error: venv '{name}' not found in {start}/.venv/", file=sys.stderr)
+        qprint_err(f"Error: venv '{name}' not found in {start}/.venv/")
     else:
-        print(f"Error: venv '{name}' not found", file=sys.stderr)
+        qprint_err(f"Error: venv '{name}' not found")
     return 1
 
 
@@ -197,10 +210,10 @@ def cmd_ls(args):
     if args.start_dir:
         start = Path(args.start_dir).expanduser().resolve()
         if not is_within_home(start):
-            print(f"Error: '{args.start_dir}' is not within home directory", file=sys.stderr)
+            qprint_err(f"Error: '{args.start_dir}' is not within home directory")
             return 1
         if not start.is_dir():
-            print(f"Error: '{args.start_dir}' is not a directory", file=sys.stderr)
+            qprint_err(f"Error: '{args.start_dir}' is not a directory")
             return 1
     else:
         start = Path.cwd()
@@ -258,7 +271,7 @@ def cmd_ls(args):
                 # Fallback for edge cases where path isn't under HOME
                 branch_display = str(branch_dir)
 
-        print(f"{indicator} {name:<{max_name_len}}  {branch_display}")
+        qprint(f"{indicator} {name:<{max_name_len}}  {branch_display}")
 
     return 0
 
@@ -284,11 +297,11 @@ def cmd_validate(args):
     result = validate_venv(path)
 
     if result == 1:
-        print(f"Error: '{path}' not found", file=sys.stderr)
+        qprint_err(f"Error: '{path}' not found")
     elif result == 2:
-        print(f"Error: '{path}' is not a directory", file=sys.stderr)
+        qprint_err(f"Error: '{path}' is not a directory")
     elif result == 3:
-        print(f"Error: '{path}' is not a valid venv (missing bin/activate)", file=sys.stderr)
+        qprint_err(f"Error: '{path}' is not a valid venv (missing bin/activate)")
 
     return result
 
@@ -314,8 +327,8 @@ def cmd_init(args):
     venv_dir = target / '.venv'
 
     if venv_dir.exists():
-        print(f"Error: .venv already exists in {target}", file=sys.stderr)
-        print("Use 'vup new <name>' to create a new venv.", file=sys.stderr)
+        qprint_err(f"Error: .venv already exists in {target}")
+        qprint_err("Use 'vup new <name>' to create a new venv.")
         return 1
 
     venv_dir.mkdir()
@@ -348,8 +361,8 @@ def cmd_new(args):
     # Check .venv/ exists (different behavior in/out of home)
     if not venv_dir.exists():
         if in_home:
-            print(f"Error: .venv/ does not exist in {target}", file=sys.stderr)
-            print("Use 'vup init' first to initialize.", file=sys.stderr)
+            qprint_err(f"Error: .venv/ does not exist in {target}")
+            qprint_err("Use 'vup init' first to initialize.")
             return 1
         else:
             # Auto-create ~/.venv/ when outside home
@@ -357,7 +370,7 @@ def cmd_new(args):
 
     # Check if venv already exists
     if venv_path.exists():
-        print(f"Error: venv '{args.name}' already exists in {venv_dir}", file=sys.stderr)
+        qprint_err(f"Error: venv '{args.name}' already exists in {venv_dir}")
         return 1
 
     # Create the venv
@@ -367,11 +380,11 @@ def cmd_new(args):
         text=True
     )
     if result.returncode != 0:
-        print(f"Error creating venv: {result.stderr}", file=sys.stderr)
+        qprint_err(f"Error creating venv: {result.stderr}")
         return 1
 
     # Output path for bash to activate
-    print(venv_path)
+    print(venv_path)  # Critical output for bash - never suppress
     return 0
 
 
@@ -435,6 +448,9 @@ Usage:
   vup off              Deactivate current venv
   vup help             Show this help message
 
+Options:
+  -q, --quiet          Suppress informational output
+
 Environment:
   venvs are stored in .venv/ directories
   Search starts from cwd and traverses up to ~
@@ -448,10 +464,14 @@ def main():
     Returns:
         Exit code from the subcommand handler.
     """
+    global QUIET
+
     parser = argparse.ArgumentParser(
         prog='vup-core',
         description='Python backend for vup virtual environment manager'
     )
+    parser.add_argument('-q', '--quiet', action='store_true',
+                        help='Suppress informational output')
     subparsers = parser.add_subparsers(dest='command', required=True)
 
     # find <name> [--start-dir <dir>] [--no-traverse]
@@ -490,6 +510,7 @@ def main():
     p_help.set_defaults(func=cmd_help)
 
     args = parser.parse_args()
+    QUIET = args.quiet
     return args.func(args)
 
 

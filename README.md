@@ -231,6 +231,18 @@ vup main  # Activates api-server/main (different venv!)
 | `vup off` | Deactivate current venv |
 | `vup help` | Show help message |
 
+### Options
+
+All commands support the `-q` / `--quiet` flag to suppress informational output:
+
+```bash
+vup -q main          # Activate silently (no "Activated..." message)
+vup -q ls            # List venvs without output
+vup -q new testing   # Create and activate without messages
+```
+
+This is useful for scripts and dotfiles where you want to activate venvs without cluttering the output.
+
 ## Prompt Customization
 
 vup updates your prompt to show the active venv:

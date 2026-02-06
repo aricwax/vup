@@ -47,6 +47,22 @@
 # Returns:
 #   0 on success, 1 on error
 vup() {
+    # Parse -q/--quiet flag
+    local quiet=false
+    local quiet_flag=""
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            -q|--quiet)
+                quiet=true
+                quiet_flag="-q"
+                shift
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+
     # Check if cwd is within home directory (used for fallback behavior)
     local in_home=true
     case "$PWD" in
@@ -58,42 +74,42 @@ vup() {
         ls)
             # Delegate listing entirely to vup-core
             shift
-            vup-core ls "$@"
+            vup-core $quiet_flag ls "$@"
             ;;
         init)
             # Delegate directory creation to vup-core
-            vup-core init
+            vup-core $quiet_flag init
             ;;
         new)
             # Create a new venv and activate it
             if [ -z "$2" ]; then
-                echo "Error: venv name required" >&2
-                echo "Usage: vup new <name>" >&2
+                [ "$quiet" = false ] && echo "Error: venv name required" >&2
+                [ "$quiet" = false ] && echo "Usage: vup new <name>" >&2
                 return 1
             fi
             local venv_path
             # vup-core creates the venv and outputs its path on success
-            venv_path=$(vup-core new "$2") || return 1
-            _vup_activate "$venv_path"
+            venv_path=$(vup-core $quiet_flag new "$2") || return 1
+            _vup_activate "$venv_path" "$quiet"
             ;;
         rm)
             # Remove a venv from the current directory's .venv/
             # This command has NO fallback - user must be in the branch directory
             if [ -z "$2" ]; then
-                echo "Error: venv name required" >&2
-                echo "Usage: vup rm <name>" >&2
+                [ "$quiet" = false ] && echo "Error: venv name required" >&2
+                [ "$quiet" = false ] && echo "Usage: vup rm <name>" >&2
                 return 1
             fi
             # Require user to be within home directory
             if [ "$in_home" = false ]; then
-                echo "Error: venvs must be removed from their branch directory." >&2
+                [ "$quiet" = false ] && echo "Error: venvs must be removed from their branch directory." >&2
                 return 1
             fi
             # Use vup-core to validate the venv exists and is valid
-            vup-core validate ".venv/$2" || return 1
+            vup-core $quiet_flag validate ".venv/$2" || return 1
             # Show extra warning when removing from ~/.venv/ (home venvs are global)
             if [ "$PWD" = "$HOME" ]; then
-                echo "Warning: This will permanently remove the '$2' venv from your home directory (~/.venv/)."
+                [ "$quiet" = false ] && echo "Warning: This will permanently remove the '$2' venv from your home directory (~/.venv/)."
             fi
             # Require user to type the venv name to confirm (prevents accidents)
             printf "Type '%s' to confirm removal: " "$2"
@@ -104,9 +120,9 @@ vup() {
                     _vup_deactivate
                 fi
                 rm -rf ".venv/$2"
-                echo "Removed $2"
+                [ "$quiet" = false ] && echo "Removed $2"
             else
-                echo "Removal cancelled"
+                [ "$quiet" = false ] && echo "Removal cancelled"
             fi
             ;;
         off)
@@ -114,7 +130,7 @@ vup() {
             if [ -n "$VIRTUAL_ENV" ]; then
                 _vup_deactivate
             else
-                echo "No venv active"
+                [ "$quiet" = false ] && echo "No venv active"
             fi
             ;;
         help|-h|--help)
@@ -124,14 +140,14 @@ vup() {
         -d)
             # Activate venv from a specific directory (no upward traversal)
             if [ -z "$2" ] || [ -z "$3" ]; then
-                echo "Error: directory and venv name required" >&2
-                echo "Usage: vup -d <dir> <name>" >&2
+                [ "$quiet" = false ] && echo "Error: directory and venv name required" >&2
+                [ "$quiet" = false ] && echo "Usage: vup -d <dir> <name>" >&2
                 return 1
             fi
             local venv_path
             # --no-traverse ensures we only look in the specified directory
-            venv_path=$(vup-core find "$3" --start-dir "$2" --no-traverse) || return 1
-            _vup_activate "$venv_path"
+            venv_path=$(vup-core $quiet_flag find "$3" --start-dir "$2" --no-traverse) || return 1
+            _vup_activate "$venv_path" "$quiet"
             ;;
         "")
             # No arguments - show help
@@ -140,13 +156,13 @@ vup() {
         *)
             # Default: treat argument as venv name, search upward from cwd
             local venv_path
-            venv_path=$(vup-core find "$1") || return 1
-            _vup_activate "$venv_path"
+            venv_path=$(vup-core $quiet_flag find "$1") || return 1
+            _vup_activate "$venv_path" "$quiet"
             ;;
     esac
 }
 
-# _vup_activate <venv_path>
+# _vup_activate <venv_path> [quiet]
 # Activate a virtual environment at the given path.
 #
 # This function handles the shell-level activation that cannot be done from
@@ -155,13 +171,15 @@ vup() {
 #
 # Args:
 #   venv_path - Full path to the venv directory (e.g., ~/proj/.venv/main)
+#   quiet     - Optional: "true" to suppress output, "false" otherwise
 #
 # Side effects:
 #   - Sources <venv_path>/bin/activate (sets VIRTUAL_ENV, modifies PATH)
 #   - Sets PS1 to custom format: (<branch>/<name>) $PS1_BASE
-#   - Prints activation message to stdout
+#   - Prints activation message to stdout (unless quiet)
 _vup_activate() {
     local venv_path="$1"
+    local quiet="${2:-false}"
     # Deactivate any existing venv first (clean switch)
     if [ -n "$VIRTUAL_ENV" ]; then
         deactivate 2>/dev/null
@@ -172,8 +190,8 @@ _vup_activate() {
     local prompt_id
     prompt_id=$(vup-core prompt "$venv_path")
     PS1="($prompt_id) $PS1_BASE"
-    # Confirm activation to user
-    echo "Activated $(basename "$venv_path") from $(dirname "$venv_path")/"
+    # Confirm activation to user (unless quiet mode)
+    [ "$quiet" = false ] && echo "Activated $(basename "$venv_path") from $(dirname "$venv_path")/"
 }
 
 # _vup_deactivate()
@@ -208,6 +226,9 @@ Usage:
   vup rm <name>        Remove a venv (must be in branch directory)
   vup off              Deactivate current venv
   vup help             Show this help message
+
+Options:
+  -q, --quiet          Suppress informational output
 
 Environment:
   venvs are stored in .venv/ directories
