@@ -1,4 +1,5 @@
-# vup.bash - Shell functions for vup virtual environment manager
+# vup.sh - Shell functions for vup virtual environment manager
+# POSIX-compliant version - works with bash, zsh, dash, sh, etc.
 #
 # This file contains shell functions that are sourced into the user's shell
 # session. These functions handle all operations that require direct shell
@@ -13,10 +14,10 @@
 #
 # Installation:
 #   1. Copy vup-core to ~/.local/bin/ (or somewhere in PATH)
-#   2. Add to ~/.bashrc:
+#   2. Add to ~/.bashrc (or ~/.zshrc, ~/.profile):
 #        BASE_PS1="$PS1"
 #        export VIRTUAL_ENV_DISABLE_PROMPT=1
-#        source /path/to/vup.bash
+#        . /path/to/vup.sh
 #
 # Environment variables:
 #   BASE_PS1      - The user's original prompt (set before sourcing this file)
@@ -56,7 +57,8 @@ vup() {
     case "$1" in
         ls)
             # Delegate listing entirely to vup-core
-            vup-core ls "${@:2}"
+            shift
+            vup-core ls "$@"
             ;;
         init)
             # Delegate directory creation to vup-core
@@ -64,7 +66,7 @@ vup() {
             ;;
         new)
             # Create a new venv and activate it
-            if [[ -z "$2" ]]; then
+            if [ -z "$2" ]; then
                 echo "Error: venv name required" >&2
                 echo "Usage: vup new <name>" >&2
                 return 1
@@ -77,27 +79,28 @@ vup() {
         rm)
             # Remove a venv from the current directory's .venv/
             # This command has NO fallback - user must be in the branch directory
-            if [[ -z "$2" ]]; then
+            if [ -z "$2" ]; then
                 echo "Error: venv name required" >&2
                 echo "Usage: vup rm <name>" >&2
                 return 1
             fi
             # Require user to be within home directory
-            if [[ "$in_home" == false ]]; then
+            if [ "$in_home" = false ]; then
                 echo "Error: venvs must be removed from their branch directory." >&2
                 return 1
             fi
             # Use vup-core to validate the venv exists and is valid
             vup-core validate ".venv/$2" || return 1
             # Show extra warning when removing from ~/.venv/ (home venvs are global)
-            if [[ "$PWD" == "$HOME" ]]; then
+            if [ "$PWD" = "$HOME" ]; then
                 echo "Warning: This will permanently remove the '$2' venv from your home directory (~/.venv/)."
             fi
             # Require user to type the venv name to confirm (prevents accidents)
-            read -p "Type '$2' to confirm removal: " confirm
-            if [[ "$confirm" == "$2" ]]; then
+            printf "Type '%s' to confirm removal: " "$2"
+            read -r confirm
+            if [ "$confirm" = "$2" ]; then
                 # Deactivate first if this venv is currently active
-                if [[ "$VIRTUAL_ENV" == "$PWD/.venv/$2" ]]; then
+                if [ "$VIRTUAL_ENV" = "$PWD/.venv/$2" ]; then
                     _vup_deactivate
                 fi
                 rm -rf ".venv/$2"
@@ -108,7 +111,7 @@ vup() {
             ;;
         off)
             # Deactivate the current venv
-            if [[ -n "$VIRTUAL_ENV" ]]; then
+            if [ -n "$VIRTUAL_ENV" ]; then
                 _vup_deactivate
             else
                 echo "No venv active"
@@ -120,7 +123,7 @@ vup() {
             ;;
         -d)
             # Activate venv from a specific directory (no upward traversal)
-            if [[ -z "$2" || -z "$3" ]]; then
+            if [ -z "$2" ] || [ -z "$3" ]; then
                 echo "Error: directory and venv name required" >&2
                 echo "Usage: vup -d <dir> <name>" >&2
                 return 1
@@ -160,11 +163,11 @@ vup() {
 _vup_activate() {
     local venv_path="$1"
     # Deactivate any existing venv first (clean switch)
-    if [[ -n "$VIRTUAL_ENV" ]]; then
+    if [ -n "$VIRTUAL_ENV" ]; then
         deactivate 2>/dev/null
     fi
     # Source the venv's activate script (this sets VIRTUAL_ENV and modifies PATH)
-    source "$venv_path/bin/activate"
+    . "$venv_path/bin/activate"
     # Generate and set custom prompt using vup-core
     local prompt_id
     prompt_id=$(vup-core prompt "$venv_path")
