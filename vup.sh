@@ -192,6 +192,7 @@ _vup_activate() {
     PS1="($prompt_id) $PS1_BASE"
     # Confirm activation to user (unless quiet mode)
     [ "$quiet" = false ] && echo "Activated $(basename "$venv_path") from $(dirname "$venv_path")/"
+    return 0
 }
 
 # _vup_deactivate()
