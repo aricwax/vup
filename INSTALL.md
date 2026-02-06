@@ -19,13 +19,52 @@ cd vup
 The install script will:
 1. Copy `vup-core` to `~/.local/bin/`
 2. Copy `vup.sh` to `~/.local/share/vup/`
-3. Add shell integration to your config file (with confirmation)
-4. Verify your PATH includes `~/.local/bin/`
+3. Detect all your shell configs (`.bashrc`, `.zshrc`, `.profile`)
+4. Prompt you to select which shells to configure (defaults to all)
+5. Add PATH to shell configs if needed
+
+### Multi-Shell Configuration
+
+The installer detects and offers to configure multiple shells:
+
+```
+Detected shell configuration files:
+  1) bash      ~/.bashrc
+  2) zsh       ~/.zshrc
+  3) sh/other  ~/.profile
+
+All shells will be configured by default.
+Press Enter to configure all, or enter numbers to select (e.g., '1 3'):
+```
+
+**Options:**
+- Press **Enter** → Configure all detected shells (recommended)
+- Type **numbers** → Select specific shells (e.g., `1` for bash only, or `1 2` for bash + zsh)
+- Type **none** → Skip shell configuration entirely
+
+**Idempotent:** Running the installer again safely adds configuration to new shells without duplicating existing ones.
 
 After installation, restart your shell or run:
 ```bash
 source ~/.bashrc  # or ~/.zshrc, ~/.profile depending on your shell
 ```
+
+### Automated Installation
+
+For scripts, CI/CD, or non-interactive environments:
+
+```bash
+# Configure all detected shells (default)
+echo "" | ./install.sh
+
+# Or use yes for full automation
+yes | ./install.sh
+
+# Skip shell configuration
+echo "none" | ./install.sh
+```
+
+The installer works seamlessly with automation tools like Ansible, Docker, or provisioning scripts.
 
 ## Manual Installation
 
@@ -49,6 +88,9 @@ cp vup.sh ~/.local/share/vup/vup.sh
 Add these lines to your shell config (`~/.bashrc`, `~/.zshrc`, or `~/.profile`):
 
 ```bash
+# Add ~/.local/bin to PATH (if not already in PATH)
+export PATH="$HOME/.local/bin:$PATH"
+
 # vup - Python virtual environment manager
 export BASE_PS1='$ '
 export VIRTUAL_ENV_DISABLE_PROMPT=1
@@ -63,13 +105,7 @@ export BASE_PS1='\u@\h:\w\$ '  # bash: user@host:path$
 export BASE_PS1='%n@%m:%~%# '  # zsh: user@host:path%
 ```
 
-### 3. Ensure PATH includes ~/.local/bin
-
-If `~/.local/bin` is not in your PATH, add this to your shell config:
-
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-```
+### 3. Reload shell config
 
 ### 4. Reload shell config
 

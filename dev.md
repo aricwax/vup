@@ -308,13 +308,13 @@ Each subcommand communicates with bash via stdout, stderr, and exit codes.
 - stdout: Usage information and available commands
 - Exit 0 always
 
-### `vup.bash`
+### `vup.sh`
 
 #### About
 
-`vup.bash` contains shell functions that are sourced into the user's shell session (typically via `~/.bashrc` or `~/.bash_funcs`). These functions handle all operations that require direct shell environment manipulation—things that cannot be done from a subprocess.
+`vup.sh` is a POSIX-compliant shell script containing functions that are sourced into the user's shell session (typically via `~/.bashrc`, `~/.zshrc`, or `~/.profile`). These functions handle all operations that require direct shell environment manipulation—things that cannot be done from a subprocess.
 
-Installation requires setting `BASE_PS1` to the user's prompt before sourcing, and exporting `VIRTUAL_ENV_DISABLE_PROMPT=1` to prevent the default venv prompt modification.
+The script is fully compatible with bash, zsh, dash, and other POSIX-compliant shells. Installation requires setting `BASE_PS1` to the user's prompt before sourcing, and exporting `VIRTUAL_ENV_DISABLE_PROMPT=1` to prevent the default venv prompt modification.
 
 #### Functions
 
@@ -346,14 +346,18 @@ Displays usage information as a fallback when `vup-core help` is unavailable.
 
 ## Testing
 
-The test suite is split into two files that mirror the hybrid bash/Python architecture:
+The test suite is split into multiple files covering different aspects:
 
 | Test File | Tests | Purpose |
 |-----------|-------|---------|
 | `test_vup_core.py` | 19 | Unit tests for the Python backend via subprocess |
-| `test_integration.sh` | 12 | End-to-end tests for the full bash workflow |
+| `test_integration.sh` | 12 | End-to-end tests for shell workflow (parameterized by shell) |
+| `test_all_shells.sh` | N/A | Wrapper that runs integration tests across bash, zsh, and dash |
+| `test_install_docker.sh` | N/A | Tests installation in clean Ubuntu Docker container |
 
-Run all tests with: `./test_vup_core.py && ./test_integration.sh`
+Run all tests with: `./test_vup_core.py && ./test_all_shells.sh`
+
+The integration tests are POSIX-compliant and work across multiple shells, ensuring vup functions correctly in bash, zsh, and dash environments.
 
 ### `test_vup_core.py`
 
@@ -402,9 +406,16 @@ The `run()` helper function invokes `vup-core` with arguments and returns `(retu
 
 #### About
 
-`test_integration.sh` tests the `vup` bash function by running it in real subshells with a proper shell environment. Unlike the Python tests which test `vup-core` in isolation, these tests verify the full user-facing workflow including shell environment manipulation (`PS1`, `VIRTUAL_ENV`, sourcing activate scripts).
+`test_integration.sh` tests the `vup` shell function by running it in real subshells with a proper shell environment. Unlike the Python tests which test `vup-core` in isolation, these tests verify the full user-facing workflow including shell environment manipulation (`PS1`, `VIRTUAL_ENV`, sourcing activate scripts).
 
-Each test uses `setup()` and `teardown()` to create and clean up isolated temporary directories under `$HOME`. The `run_vup()` helper spawns a bash subshell that sources `vup.bash` with proper environment setup (`BASE_PS1`, `VIRTUAL_ENV_DISABLE_PROMPT`).
+The test script accepts an optional shell parameter (defaults to bash), allowing it to test vup across different shells:
+```bash
+./test_integration.sh bash  # Test with bash
+./test_integration.sh zsh   # Test with zsh
+./test_integration.sh dash  # Test with dash
+```
+
+Each test uses `setup()` and `teardown()` to create and clean up isolated temporary directories under `$HOME`. The `run_vup()` helper spawns a subshell using the specified shell, sources `vup.sh`, and runs commands with proper environment setup (`BASE_PS1`, `VIRTUAL_ENV_DISABLE_PROMPT`).
 
 #### Test Cases
 
@@ -428,6 +439,39 @@ Each test uses `setup()` and `teardown()` to create and clean up isolated tempor
 - `test_dash_d` - `vup -d <dir> <name>` activates from specific directory
 - `test_switch` - Activating new venv implicitly deactivates the old one
 
+### `test_all_shells.sh`
+
+#### About
+
+`test_all_shells.sh` is a wrapper script that runs `test_integration.sh` with multiple shells to verify POSIX compliance and cross-shell compatibility.
+
+#### Shells Tested
+
+- **bash** - Reference implementation
+- **zsh** - Popular alternative shell
+- **dash** - Strict POSIX compliance check
+
+If a shell is not installed, it will be skipped with a warning. The script exits with an error if any shell fails its tests.
+
+Run with: `./test_all_shells.sh`
+
+### `test_install_docker.sh`
+
+#### About
+
+`test_install_docker.sh` tests the installation process in a clean Ubuntu 22.04 Docker container. This ensures the installer works correctly in a fresh environment without any existing configuration or dependencies (beyond the prerequisites).
+
+#### What It Tests
+
+1. File installation to correct locations (`~/.local/bin/`, `~/.local/share/vup/`)
+2. Shell configuration is added correctly
+3. PATH is properly configured
+4. `vup` command works after installation
+
+This test simulates what a new user would experience when installing vup for the first time.
+
+Run with: `./test_install_docker.sh`
+
 ---
 
 ## Planning
@@ -441,7 +485,7 @@ Each test uses `setup()` and `teardown()` to create and clean up isolated tempor
 - Implement subcommands: `find`, `ls`, `validate`, `init`, `new`, `prompt`, `help`
 
 #### Task 1.2: Create `vup` bash function [DONE]
-- Location: `vup.bash` in repo (install to `~/.bash_funcs`)
+- Location: `vup.sh` in repo (install to `~/.bash_funcs`)
 - Implement subcommand routing and shell-level operations
 - Helper functions: `_vup_activate`, `_vup_deactivate`
 
@@ -489,19 +533,26 @@ Each test uses `setup()` and `teardown()` to create and clean up isolated tempor
 
 ### Phase 3: Installation & Polish
 
-#### Task 3.1: Create installation script
-- Copy `vup-core` to `~/.local/bin/`
-- Make executable
-- Add `vup` function to `~/.bash_funcs`
-- Update `~/.bashrc` if needed
+#### Task 3.1: Create installation script [DONE]
+- `install.sh` - Interactive installer for user installations
+  - Detects all shell configs (bash, zsh, sh/other)
+  - Multi-shell selection with smart defaults
+  - Auto-adds PATH if needed
+  - Idempotent (safe to run multiple times)
+- `uninstall.sh` - Clean removal with optional shell config cleanup
+- `test_install_docker.sh` - Tests installation in clean Docker container
+- See `INSTALL.md` for complete documentation
 
 #### Task 3.2: Testing [DONE]
 - See the **Testing** section above for full documentation
-- Run with `./test_vup_core.py && ./test_integration.sh`
+- Run with `./test_vup_core.py && ./test_all_shells.sh`
+- Multi-shell testing: bash, zsh, dash
+- Docker-based installation testing
 
-#### Task 3.3: Documentation
-- Usage examples in README
-- Installation instructions
+#### Task 3.3: Documentation [IN PROGRESS]
+- `INSTALL.md` - Complete installation guide [DONE]
+- `dev.md` - Architecture and design documentation [DONE]
+- Usage examples in README [TODO]
 
 ---
 
