@@ -11,7 +11,7 @@
 The simplest way to install vup for your user account:
 
 ```bash
-git clone https://github.com/your-username/vup.git
+git clone https://github.com/aricwax/vup.git
 cd vup
 ./install.sh
 ```
@@ -219,7 +219,7 @@ Other POSIX shells should work but are not explicitly tested.
 For development, you can run vup directly from the repo:
 
 ```bash
-git clone https://github.com/your-username/vup.git
+git clone https://github.com/aricwax/vup.git
 cd vup
 
 # Add to your shell config:
@@ -255,4 +255,4 @@ rm -rf ~/vup-test
 - Run `vup help` for usage information
 - Check the [README](README.md) for feature documentation
 - See [dev.md](dev.md) for architecture details
-- Report issues: https://github.com/your-username/vup/issues
+- Report issues: https://github.com/aricwax/vup/issues

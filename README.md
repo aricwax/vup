@@ -89,7 +89,7 @@ The hierarchical model means you can organize venvs however you want, and vup fi
 ### Installation
 
 ```bash
-git clone https://github.com/your-username/vup.git
+git clone https://github.com/aricwax/vup.git
 cd vup
 ./install.sh
 ```
