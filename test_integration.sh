@@ -1,7 +1,7 @@
-#!/bin/bash
-# test_integration.sh - Integration tests for vup bash functions
+#!/usr/bin/env bash
+# test_integration.sh - Integration tests for vup shell functions
 #
-# This script tests the vup bash function (vup.bash) by running it in real
+# This script tests the vup shell function (vup.sh) by running it in real
 # subshells with a real shell environment. Unlike test_vup_core.py which tests
 # the Python backend in isolation, these tests verify the full user-facing
 # workflow including shell environment manipulation (PS1, VIRTUAL_ENV, etc.).
@@ -22,19 +22,32 @@
 #
 # Dependencies:
 #   - vup-core: Must be in PATH or in the same directory as this script
-#   - vup.bash: Must be in the same directory as this script
-#   - bash: Tests require bash for function sourcing
+#   - vup.sh: Must be in the same directory as this script
+#   - Target shell: bash (default), zsh, or dash
 #   - python3: Required by vup-core for venv creation
 #
-# Run with: ./test_integration.sh
+# Run with:
+#   ./test_integration.sh [shell]
+#   Examples: ./test_integration.sh bash
+#             ./test_integration.sh zsh
+#             ./test_integration.sh dash
 #
 # See dev.md for full design documentation.
 
 set -e
 
+# Test shell selection - defaults to bash if not specified
+TEST_SHELL="${1:-bash}"
+
+# Verify the test shell is available
+if ! command -v "$TEST_SHELL" >/dev/null 2>&1; then
+    echo "Error: $TEST_SHELL is not installed or not in PATH" >&2
+    exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VUP_CORE="$SCRIPT_DIR/vup-core"
-VUP_BASH="$SCRIPT_DIR/vup.bash"
+VUP_SH="$SCRIPT_DIR/vup.sh"
 
 # ===========================================================================
 # Output formatting and test tracking
@@ -107,9 +120,12 @@ teardown() {
 # run_vup <commands>
 # Execute vup commands in an isolated subshell with proper environment.
 #
-# Spawns a bash subshell that sources vup.bash and runs the provided commands.
-# This simulates how a user would interact with vup in a real shell session,
-# with proper BASE_PS1 and VIRTUAL_ENV_DISABLE_PROMPT settings.
+# Spawns a subshell using $TEST_SHELL that sources vup.sh and runs the provided
+# commands. This simulates how a user would interact with vup in a real shell
+# session, with proper BASE_PS1 and VIRTUAL_ENV_DISABLE_PROMPT settings.
+#
+# Note: Environment variables are passed before the shell invocation to ensure
+# proper inheritance across different shells (especially zsh).
 #
 # Args:
 #   commands - Shell commands to execute (passed as a single string)
@@ -120,10 +136,17 @@ teardown() {
 # Example:
 #   run_vup 'vup init && vup new myvenv'
 run_vup() {
-    bash -c "
-        export BASE_PS1='test$ '
-        export VIRTUAL_ENV_DISABLE_PROMPT=1
-        source '$VUP_BASH'
+    # Determine shell flags - use -f for zsh to skip rc files that might reset PATH
+    local shell_flags=""
+    if [ "$TEST_SHELL" = "zsh" ]; then
+        shell_flags="-f"
+    fi
+
+    PATH="$PATH" \
+    BASE_PS1='test$ ' \
+    VIRTUAL_ENV_DISABLE_PROMPT=1 \
+    "$TEST_SHELL" $shell_flags -c "
+        . '$VUP_SH'
         $*
     "
 }
@@ -165,7 +188,7 @@ test_no_args() {
 # to hold virtual environments. This is a prerequisite for 'vup new'.
 test_init() {
     setup
-    if run_vup 'vup init' && [[ -d .venv ]]; then
+    if run_vup 'vup init' && [ -d .venv ]; then
         pass "vup init"
     else
         fail "vup init"
@@ -184,7 +207,7 @@ test_new() {
     setup
     run_vup 'vup init'
     output=$(run_vup 'vup new testvenv && echo "VIRTUAL_ENV=$VIRTUAL_ENV"')
-    if [[ -d .venv/testvenv ]] && echo "$output" | grep -q "Activated testvenv"; then
+    if [ -d .venv/testvenv ] && echo "$output" | grep -q "Activated testvenv"; then
         pass "vup new"
     else
         fail "vup new: $output"
@@ -299,7 +322,7 @@ test_prompt() {
     # Check that prompt command generates expected format
     dir_name=$(basename "$TEST_DIR")
     output=$("$VUP_CORE" prompt "$TEST_DIR/.venv/myvenv")
-    if [[ "$output" == "$dir_name/myvenv" ]]; then
+    if [ "$output" = "$dir_name/myvenv" ]; then
         pass "prompt format"
     else
         fail "prompt format: expected '$dir_name/myvenv', got '$output'"
@@ -361,8 +384,8 @@ test_switch() {
 # Returns:
 #   0 if all tests passed, 1 if any test failed
 main() {
-    echo "Integration tests for vup"
-    echo "========================="
+    echo "Integration tests for vup ($TEST_SHELL)"
+    echo "========================================"
     echo ""
 
     test_help
@@ -381,7 +404,7 @@ main() {
     echo ""
     echo "$PASSED passed, $FAILED failed"
 
-    [[ $FAILED -eq 0 ]]
+    [ "$FAILED" -eq 0 ]
 }
 
 main

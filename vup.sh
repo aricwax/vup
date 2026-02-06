@@ -71,10 +71,10 @@ vup() {
                 echo "Usage: vup new <name>" >&2
                 return 1
             fi
-            local path
+            local venv_path
             # vup-core creates the venv and outputs its path on success
-            path=$(vup-core new "$2") || return 1
-            _vup_activate "$path"
+            venv_path=$(vup-core new "$2") || return 1
+            _vup_activate "$venv_path"
             ;;
         rm)
             # Remove a venv from the current directory's .venv/
@@ -128,10 +128,10 @@ vup() {
                 echo "Usage: vup -d <dir> <name>" >&2
                 return 1
             fi
-            local path
+            local venv_path
             # --no-traverse ensures we only look in the specified directory
-            path=$(vup-core find "$3" --start-dir "$2" --no-traverse) || return 1
-            _vup_activate "$path"
+            venv_path=$(vup-core find "$3" --start-dir "$2" --no-traverse) || return 1
+            _vup_activate "$venv_path"
             ;;
         "")
             # No arguments - show help
@@ -139,9 +139,9 @@ vup() {
             ;;
         *)
             # Default: treat argument as venv name, search upward from cwd
-            local path
-            path=$(vup-core find "$1") || return 1
-            _vup_activate "$path"
+            local venv_path
+            venv_path=$(vup-core find "$1") || return 1
+            _vup_activate "$venv_path"
             ;;
     esac
 }
