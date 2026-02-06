@@ -122,7 +122,7 @@ teardown() {
 #
 # Spawns a subshell using $TEST_SHELL that sources vup.sh and runs the provided
 # commands. This simulates how a user would interact with vup in a real shell
-# session, with proper BASE_PS1 and VIRTUAL_ENV_DISABLE_PROMPT settings.
+# session, with proper PS1_BASE and VIRTUAL_ENV_DISABLE_PROMPT settings.
 #
 # Note: Environment variables are passed before the shell invocation to ensure
 # proper inheritance across different shells (especially zsh).
@@ -143,7 +143,7 @@ run_vup() {
     fi
 
     PATH="$PATH" \
-    BASE_PS1='test$ ' \
+    PS1_BASE='test$ ' \
     VIRTUAL_ENV_DISABLE_PROMPT=1 \
     "$TEST_SHELL" $shell_flags -c "
         . '$VUP_SH'

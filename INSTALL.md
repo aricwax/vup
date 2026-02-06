@@ -92,17 +92,17 @@ Add these lines to your shell config (`~/.bashrc`, `~/.zshrc`, or `~/.profile`):
 export PATH="$HOME/.local/bin:$PATH"
 
 # vup - Python virtual environment manager
-export BASE_PS1='$ '
+export PS1_BASE='$ '
 export VIRTUAL_ENV_DISABLE_PROMPT=1
 . ~/.local/share/vup/vup.sh
 ```
 
-**Important:** Set `BASE_PS1` to your desired prompt format. The example above uses a simple `$ ` prompt. For a more typical prompt:
+**Important:** Set `PS1_BASE` to your desired prompt format. The example above uses a simple `$ ` prompt. For a more typical prompt:
 
 ```bash
-export BASE_PS1='\u@\h:\w\$ '  # bash: user@host:path$
+export PS1_BASE='\u@\h:\w\$ '  # bash: user@host:path$
 # or
-export BASE_PS1='%n@%m:%~%# '  # zsh: user@host:path%
+export PS1_BASE='%n@%m:%~%# '  # zsh: user@host:path%
 ```
 
 ### 3. Reload shell config
@@ -150,7 +150,7 @@ Package managers should display a message instructing users to add to their shel
 
 ```bash
 # vup - Python virtual environment manager
-export BASE_PS1='$ '  # Customize this to your preference
+export PS1_BASE='$ '  # Customize this to your preference
 export VIRTUAL_ENV_DISABLE_PROMPT=1
 . /usr/local/share/vup/vup.sh  # or /usr/share/vup/vup.sh
 ```
@@ -224,7 +224,7 @@ cd vup
 
 # Add to your shell config:
 export PATH="/path/to/vup:$PATH"
-export BASE_PS1='$ '
+export PS1_BASE='$ '
 export VIRTUAL_ENV_DISABLE_PROMPT=1
 . /path/to/vup/vup.sh
 ```

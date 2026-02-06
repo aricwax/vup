@@ -236,17 +236,17 @@ vup main  # Activates api-server/main (different venv!)
 vup updates your prompt to show the active venv:
 
 ```bash
-# Format: (<branch_dir>/<venv_name>) BASE_PS1
+# Format: (<branch_dir>/<venv_name>) PS1_BASE
 (myproject/main) user@host:~/myproject/src$
 
 # For home venvs:
 (~/main) user@host:/tmp$
 ```
 
-Customize by setting `BASE_PS1` in your shell config before sourcing vup:
+Customize by setting `PS1_BASE` in your shell config before sourcing vup:
 ```bash
-export BASE_PS1='\u@\h:\w\$ '  # bash
-export BASE_PS1='%n@%m:%~%# '  # zsh
+export PS1_BASE='\u@\h:\w\$ '  # bash
+export PS1_BASE='%n@%m:%~%# '  # zsh
 ```
 
 ## Installation Details

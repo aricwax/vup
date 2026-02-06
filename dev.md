@@ -50,7 +50,7 @@ The `<branch_dir>` is the directory containing the `.venv/` folder:
 - If the branch directory is `~`, display as `~`
 - Otherwise, display the directory name (not full path)
 
-The prompt format is: `(<branch_dir>/<venv_name>) BASE_PS1$ `
+The prompt format is: `(<branch_dir>/<venv_name>) PS1_BASE$ `
 
 
 ---
@@ -314,7 +314,7 @@ Each subcommand communicates with bash via stdout, stderr, and exit codes.
 
 `vup.sh` is a POSIX-compliant shell script containing functions that are sourced into the user's shell session (typically via `~/.bashrc`, `~/.zshrc`, or `~/.profile`). These functions handle all operations that require direct shell environment manipulation—things that cannot be done from a subprocess.
 
-The script is fully compatible with bash, zsh, dash, and other POSIX-compliant shells. Installation requires setting `BASE_PS1` to the user's prompt before sourcing, and exporting `VIRTUAL_ENV_DISABLE_PROMPT=1` to prevent the default venv prompt modification.
+The script is fully compatible with bash, zsh, dash, and other POSIX-compliant shells. Installation requires setting `PS1_BASE` to the user's prompt before sourcing, and exporting `VIRTUAL_ENV_DISABLE_PROMPT=1` to prevent the default venv prompt modification.
 
 #### Functions
 
@@ -333,11 +333,11 @@ Activates a venv at the given path:
 1. Deactivates any currently active venv
 2. Sources `<venv_path>/bin/activate`
 3. Generates prompt identifier via `vup-core prompt`
-4. Sets `PS1` to `(<prompt_id>) $BASE_PS1`
+4. Sets `PS1` to `(<prompt_id>) $PS1_BASE`
 5. Prints activation message
 
 **`_vup_deactivate`**
-Deactivates the current venv and restores `PS1` to `$BASE_PS1`.
+Deactivates the current venv and restores `PS1` to `$PS1_BASE`.
 
 **`_vup_help`**
 Displays usage information as a fallback when `vup-core help` is unavailable.
@@ -415,7 +415,7 @@ The test script accepts an optional shell parameter (defaults to bash), allowing
 ./test_integration.sh dash  # Test with dash
 ```
 
-Each test uses `setup()` and `teardown()` to create and clean up isolated temporary directories under `$HOME`. The `run_vup()` helper spawns a subshell using the specified shell, sources `vup.sh`, and runs commands with proper environment setup (`BASE_PS1`, `VIRTUAL_ENV_DISABLE_PROMPT`).
+Each test uses `setup()` and `teardown()` to create and clean up isolated temporary directories under `$HOME`. The `run_vup()` helper spawns a subshell using the specified shell, sources `vup.sh`, and runs commands with proper environment setup (`PS1_BASE`, `VIRTUAL_ENV_DISABLE_PROMPT`).
 
 #### Test Cases
 
@@ -490,7 +490,7 @@ Run with: `./test_install_docker.sh`
 - Helper functions: `_vup_activate`, `_vup_deactivate`
 
 #### Task 1.3: Update `~/.bashrc`
-- Define `BASE_PS1` without trailing `$`
+- Define `PS1_BASE` without trailing `$`
 - Source `~/.bash_funcs`
 - Set `VIRTUAL_ENV_DISABLE_PROMPT=1`
 

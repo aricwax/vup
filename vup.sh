@@ -15,12 +15,12 @@
 # Installation:
 #   1. Copy vup-core to ~/.local/bin/ (or somewhere in PATH)
 #   2. Add to ~/.bashrc (or ~/.zshrc, ~/.profile):
-#        BASE_PS1="$PS1"
+#        PS1_BASE="$PS1"
 #        export VIRTUAL_ENV_DISABLE_PROMPT=1
 #        . /path/to/vup.sh
 #
 # Environment variables:
-#   BASE_PS1      - The user's original prompt (set before sourcing this file)
+#   PS1_BASE      - The user's original prompt (set before sourcing this file)
 #   VIRTUAL_ENV   - Set by activate script, used to detect active venv
 #   VIRTUAL_ENV_DISABLE_PROMPT - Must be 1 to prevent default prompt modification
 #
@@ -158,7 +158,7 @@ vup() {
 #
 # Side effects:
 #   - Sources <venv_path>/bin/activate (sets VIRTUAL_ENV, modifies PATH)
-#   - Sets PS1 to custom format: (<branch>/<name>) $BASE_PS1
+#   - Sets PS1 to custom format: (<branch>/<name>) $PS1_BASE
 #   - Prints activation message to stdout
 _vup_activate() {
     local venv_path="$1"
@@ -171,7 +171,7 @@ _vup_activate() {
     # Generate and set custom prompt using vup-core
     local prompt_id
     prompt_id=$(vup-core prompt "$venv_path")
-    PS1="($prompt_id) $BASE_PS1"
+    PS1="($prompt_id) $PS1_BASE"
     # Confirm activation to user
     echo "Activated $(basename "$venv_path") from $(dirname "$venv_path")/"
 }
@@ -184,10 +184,10 @@ _vup_activate() {
 #
 # Side effects:
 #   - Calls deactivate (unsets VIRTUAL_ENV, restores PATH)
-#   - Restores PS1 to $BASE_PS1
+#   - Restores PS1 to $PS1_BASE
 _vup_deactivate() {
     deactivate 2>/dev/null
-    PS1="$BASE_PS1"
+    PS1="$PS1_BASE"
 }
 
 # _vup_help()

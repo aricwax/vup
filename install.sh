@@ -195,7 +195,7 @@ for CONFIG_FILE in "${SELECTED_CONFIGS[@]}"; do
 export PATH="\$HOME/.local/bin:\$PATH"
 
 # vup - Python virtual environment manager
-export BASE_PS1='\$ '
+export PS1_BASE='\$ '
 export VIRTUAL_ENV_DISABLE_PROMPT=1
 . $INSTALL_SHARE/vup.sh
 EOF
@@ -203,7 +203,7 @@ EOF
         cat >> "$CONFIG_FILE" << EOF
 
 # vup - Python virtual environment manager
-export BASE_PS1='\$ '
+export PS1_BASE='\$ '
 export VIRTUAL_ENV_DISABLE_PROMPT=1
 . $INSTALL_SHARE/vup.sh
 EOF
