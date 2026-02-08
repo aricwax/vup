@@ -2,7 +2,9 @@
 
 ## Prerequisites
 
-- Python 3.3+ (for `venv` module)
+- Python 3.3+ with the `venv` module
+  - On Debian/Ubuntu: `sudo apt install python3-venv`
+  - On other systems, the `venv` module is typically included with Python
 - A POSIX-compliant shell (bash, zsh, dash, or sh)
 - Standard Unix tools (mkdir, cp, chmod, grep, sed)
 

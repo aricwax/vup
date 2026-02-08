@@ -340,7 +340,7 @@ vup follows these principles:
 | Home (global) venvs | ✅ | ✅ | ✅ |
 | POSIX-compliant | ✅ | ❌ (bash only) | ❌ (bash only) |
 | No config needed | ✅ | ❌ | ❌ |
-| Dependencies | Python 3.3+ | virtualenv | pyenv |
+| Dependencies | Python 3.3+ with `venv` | virtualenv | pyenv |
 
 ## Troubleshooting
 

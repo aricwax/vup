@@ -66,6 +66,29 @@ if [ ! -f "$VUP_SH" ]; then
     exit 1
 fi
 
+# Check Python 3 is available
+if ! command -v python3 >/dev/null 2>&1; then
+    error "python3 is required but not found"
+    echo "Install Python 3.3+ before continuing."
+    exit 1
+fi
+
+# Check Python venv module can create virtual environments.
+# On Debian/Ubuntu, the venv module is present but venv creation fails without
+# the python3-venv package, which provides ensurepip.
+PYTHON_VERSION=$(python3 --version 2>&1)
+if python3 -c "import ensurepip" 2>/dev/null; then
+    success "Python venv support found ($PYTHON_VERSION)"
+else
+    error "Python venv module cannot create virtual environments ($PYTHON_VERSION)"
+    echo ""
+    echo "The venv module is installed but missing ensurepip support."
+    echo "On Debian/Ubuntu systems, install it with:"
+    echo "  sudo apt install python3-venv"
+    echo ""
+    exit 1
+fi
+
 # ============================================================================
 # Install files
 # ============================================================================
